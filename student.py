@@ -35,29 +35,48 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 state = json.loads(
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
-
-                nearest_wall = wall_finder(state["bomberman"],state["walls"]) #argumentos(pos do bomberman,lista das pos das paredes no mapa)
+                player_pos = state["bomberman"]
+                wall_list = state["walls"]
+                nearest_wall = entity_finder(player_pos,wall_list) #argumentos(pos do bomberman,lista das pos das paredes no mapa)
                 print(nearest_wall)
+                key = action_moving(player_pos,nearest_wall)
                 
-                
-                
-                
-
-
-                
-                    
                 await websocket.send(
-                    json.dumps({"cmd": "key", "key": "d"})
-                )
-
+                            json.dumps({"cmd": "key", "key": key})
+                        )  # send key command to server - you must implement this send in the AI agent
+                
             except websockets.exceptions.ConnectionClosedOK:
                 print("Server has cleanly disconnected us")
                 return
+def action_moving(bomberman, next_move):
 
-            # Next line is not needed for AI agent
-            pygame.display.flip()
+        
+        bx = bomberman[0]
+        by = bomberman [1]
 
-def wall_finder(minha_pos,walls_pos):
+        nx= next_move[0]
+        ny = next_move[1]
+
+        if nx == bx + 1:
+            key = "d"
+        elif nx == bx -1:
+            key = "a"
+        elif ny == by + 1:
+            key = "s"
+        elif ny == by -1:
+            key = "w"
+        elif nx > bx:
+            key = "d"
+        elif nx < bx:
+            key = "a"
+        elif ny > by:
+            key = "s"
+        else:
+            key = "w"
+        
+        return key
+
+def entity_finder(minha_pos,walls_pos): # funçao para encontrar o objeto mais proximo
     distancia= 1000 # valor alto so para fazer a primeira comparaçao, pode ser alterado no futuro para uma melhor maneira
     for pos in walls_pos:
         distancia_tmp = math.sqrt( ((minha_pos[0] - pos[0])**2) +  ((minha_pos[1] - pos[1])** 2))
@@ -65,19 +84,11 @@ def wall_finder(minha_pos,walls_pos):
             distancia = distancia_tmp
             next_wall = pos
     return next_wall
-        
 
-
-
-
-
-
-
-
-
-
-
-
+def even_number(number): 
+    if (number % 2 == 0):
+        return True
+    return False    
 
 # DO NOT CHANGE THE LINES BELLOW
 # You can change the default values using the command line, example:
