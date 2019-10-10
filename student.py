@@ -66,16 +66,25 @@ def action_moving(bomberman, next_move):
 
         nx= next_move[0]
         ny = next_move[1]
-
         
-        if nx > bx:
-            key = "d"
-        elif nx < bx:
-            key = "a"
-        elif ny > by:
-            key = "s"
+        if even_number(nx): # caso a coordenada do destino tiver numero par primeiro avança no eixo y e depois no x para evitar colisoes
+            if ny > by:
+                key = "s"
+            elif ny < by:
+                key = "w"
+            elif nx > bx:
+                key = "d"
+            else:
+                key = "a"
         else:
-            key = "w"
+            if nx > bx:
+                key = "d"
+            elif nx < bx:
+                key = "a"
+            elif ny > by:
+                key = "s"
+            else:
+                key = "w"
         
         return key
 
@@ -89,9 +98,6 @@ def entity_finder(minha_pos,walls_pos): # funçao para encontrar o objeto mais p
     return next_wall
 def distancia_calculation(coord1,coord2):
     return math.sqrt( ((coord1[0] - coord2[0])**2) +  ((coord1[1] - coord2[1])** 2))
-
-
-
 def even_number(number): 
     if (number % 2 == 0):
         return True
