@@ -38,8 +38,14 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 player_pos = state["bomberman"]
                 wall_list = state["walls"]
                 nearest_wall = entity_finder(player_pos,wall_list) #argumentos(pos do bomberman,lista das pos das paredes no mapa)
+                
                 print(nearest_wall)
-                key = action_moving(player_pos,nearest_wall)
+                if not near_wall(player_pos,nearest_wall): #senao estiver colado a parede vai ate la
+                    key = action_moving(player_pos,nearest_wall)
+                #else chamas a funçao das bombas para plantar e fugir
+                
+                
+                
                 
                 await websocket.send(
                             json.dumps({"cmd": "key", "key": key})
@@ -48,6 +54,10 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
             except websockets.exceptions.ConnectionClosedOK:
                 print("Server has cleanly disconnected us")
                 return
+def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
+    if distancia_calculation(bomberman,next_move) == 1:
+        return True
+    return False
 def action_moving(bomberman, next_move):
 
         
@@ -72,11 +82,15 @@ def action_moving(bomberman, next_move):
 def entity_finder(minha_pos,walls_pos): # funçao para encontrar o objeto mais proximo
     distancia= 1000 # valor alto so para fazer a primeira comparaçao, pode ser alterado no futuro para uma melhor maneira
     for pos in walls_pos:
-        distancia_tmp = math.sqrt( ((minha_pos[0] - pos[0])**2) +  ((minha_pos[1] - pos[1])** 2))
+        distancia_tmp = distancia_calculation(minha_pos,pos)
         if(distancia_tmp < distancia):
             distancia = distancia_tmp
             next_wall = pos
     return next_wall
+def distancia_calculation(coord1,coord2):
+    return math.sqrt( ((coord1[0] - coord2[0])**2) +  ((coord1[1] - coord2[1])** 2))
+
+
 
 def even_number(number): 
     if (number % 2 == 0):
