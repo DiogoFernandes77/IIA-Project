@@ -57,10 +57,8 @@ def action_moving(bomberman, next_move):
         nx= next_move[0]
         ny = next_move[1]
 
-      
-        if ny == by -1:
-            key = "w"
-        elif nx > bx:
+        
+        if nx > bx:
             key = "d"
         elif nx < bx:
             key = "a"
