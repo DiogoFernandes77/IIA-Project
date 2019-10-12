@@ -5,7 +5,7 @@ import websockets
 import getpass
 import os
 import math
-
+import queue
 from mapa import Map
 
 # Next 2 lines are not needed for AI agent
@@ -13,7 +13,7 @@ import pygame
 
 pygame.init()
 
-
+actions_in_queue = queue.Queue(100)
 async def agent_loop(server_address="localhost:8000", agent_name="89221"):
     async with websockets.connect(f"ws://{server_address}/player") as websocket:
 
@@ -38,12 +38,18 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 player_pos = state["bomberman"]
                 wall_list = state["walls"]
                 nearest_wall = entity_finder(player_pos,wall_list) #argumentos(pos do bomberman,lista das pos das paredes no mapa)
-                
                 print(nearest_wall)
-                if not near_wall(player_pos,nearest_wall): #senao estiver colado a parede vai ate la
-                    key = action_moving(player_pos,nearest_wall)
-                #else chamas a funçao das bombas para plantar e fugir
+                key = "" 
+                if not near_wall(player_pos,nearest_wall):
+                    if(actions_in_queue.empty):
+                        #senao estiver colado a parede vai ate la
+                        action_moving(player_pos,nearest_wall)
+                else:
+                    actions_in_queue.put("B") #else chamas a funçao das bombas para plantar e fugir
                 
+                key = actions_in_queue.get()
+
+
                 
                 
                 
@@ -58,35 +64,75 @@ def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
     if distancia_calculation(bomberman,next_move) == 1:
         return True
     return False
-def action_moving(bomberman, next_move):
+def action_moving(bomberman, dest_pos):
 
         
         bx = bomberman[0]
         by = bomberman [1]
-
-        nx= next_move[0]
-        ny = next_move[1]
+        nx= dest_pos[0]
+        ny = dest_pos[1]
         
-        if even_number(nx): # caso a coordenada do destino tiver numero par primeiro avança no eixo y e depois no x para evitar colisoes
-            if ny > by:
-                key = "s"
-            elif ny < by:
-                key = "w"
-            elif nx > bx:
-                key = "d"
-            else:
-                key = "a"
-        else:
+        
+        if ( (even_number(bx) and not even_number(by)) and  (even_number(nx) and not even_number(ny))):  
             if nx > bx:
-                key = "d"
-            elif nx < bx:
-                key = "a"
-            elif ny > by:
-                key = "s"
+                actions_in_queue.put("d")
             else:
-                key = "w"
+                actions_in_queue.put("a")
+            if ny > by :
+                for count in range(ny - by + 1): # mais 1 devido ao range parar uma casa antes
+                    actions_in_queue.put("s")
+            else:
+                for count in range(by-ny+1):
+                    actions_in_queue.put("w")
+            if nx > bx:
+                for count in range(nx-bx+1):
+                    actions_in_queue.put("d")
+            else:
+                for count in range(bx-nx+1):
+                    actions_in_queue.put("a")
         
-        return key
+        
+        
+        elif ( (even_number(by) and not even_number(bx)) and  (even_number(ny) and not even_number(nx))):
+            if ny > by:
+                actions_in_queue.put("s")
+            else:
+                actions_in_queue.put("w")
+            if nx > bx :
+                for count in range(nx-bx+1):
+                    actions_in_queue.put("d")
+            else:
+                for count in range(bx-nx+1):
+                    actions_in_queue.put("a")
+            if ny > by:
+                for count in range(ny-by+1):
+                    actions_in_queue.put("s")
+            else:
+                for count in range(by-ny+1):
+                    actions_in_queue.put("w")
+            
+        
+        else :
+            if (even_number(nx) and not even_number(ny)):
+                if ny > by:
+                    actions_in_queue.put("s")  
+                elif ny < by:
+                    actions_in_queue.put("w")
+                elif nx > bx:
+                    actions_in_queue.put("d")
+                else:
+                    actions_in_queue.put("a")
+            else:
+                if nx > bx:
+                    actions_in_queue.put("d")
+                elif nx < bx:
+                    actions_in_queue.put("a")
+                elif ny > by:
+                    actions_in_queue.put("s")
+                else:
+                    actions_in_queue.put("w")
+            
+    
 
 def entity_finder(minha_pos,walls_pos): # funçao para encontrar o objeto mais proximo
     distancia= 1000 # valor alto so para fazer a primeira comparaçao, pode ser alterado no futuro para uma melhor maneira
