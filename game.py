@@ -6,7 +6,7 @@ import os
 
 import requests
 
-from characters import Balloom, Bomberman, Character, Doll, Minvo, Oneal
+from characters import Balloom, Bomberman, Character, Doll, Minvo, Oneal, Kondoria, Ovapi
 from consts import Powerups
 from mapa import Map, Tiles
 
@@ -26,6 +26,11 @@ LEVEL_ENEMIES = {
     3: [Balloom] * 2 + [Oneal] * 2 + [Doll] * 2,
     4: [Balloom] + [Oneal] + [Doll] * 2 + [Minvo] * 2,
     5: [Oneal] * 4 + [Doll] * 3,
+    6: [Oneal] * 2 + [Doll] * 3 + [Minvo] * 2,
+    7: [Oneal] * 2 + [Doll] * 3 + [Kondoria] * 2,
+    8: [Oneal] * 1 + [Doll] * 2 + [Minvo] * 4,
+    9: [Oneal] * 1 + [Doll] * 1 + [Minvo] * 4 + [Kondoria] * 1,
+    10: [Oneal] * 1 + [Doll] * 1 + [Minvo] * 1 + [Kondoria] * 3 + [Ovapi] * 1,
 }
 
 LEVEL_POWERUPS = {
@@ -34,6 +39,11 @@ LEVEL_POWERUPS = {
     3: Powerups.Detonator,
     4: Powerups.Speed,
     5: Powerups.Bombs,
+    6: Powerups.Bombs,
+    7: Powerups.Flames,
+    8: Powerups.Detonator,
+    9: Powerups.Bombpass,
+    10: Powerups.Wallpass,
 }
 
 
@@ -78,14 +88,24 @@ class Bomb:
         if by == cy:
             for r in range(self._radius + 1):
                 if self._map.is_stone((bx + r, by)):
-                    break  # protected by stone
-                if (cx, cy) == (bx + r, by) or (cx, cy) == (bx - r, by):
+                    break  # protected by stone to the right
+                if (cx, cy) == (bx + r, by):
+                    return True
+            for r in range(self._radius + 1):
+                if self._map.is_stone((bx - r, by)):
+                    break  # protected by stone to the left 
+                if (cx, cy) == (bx - r, by):
                     return True
         if bx == cx:
             for r in range(self._radius + 1):
                 if self._map.is_stone((bx, by + r)):
-                    break  # protected by stone
-                if (cx, cy) == (bx, by + r) or (cx, cy) == (bx, by - r):
+                    break  # protected by stone in the bottom
+                if (cx, cy) == (bx, by + r):
+                    return True
+            for r in range(self._radius + 1):
+                if self._map.is_stone((bx, by - r)):
+                    break  # protected by stone in the top
+                if (cx, cy) == (bx, by - r):
                     return True
 
         return False
@@ -103,7 +123,7 @@ class Game:
         self._score = 0
         self._state = {}
         self._initial_lives = lives
-        self.map = Map(size=size)
+        self.map = Map(size=size, empty=True)
         self._enemies = []
 
     def info(self):
@@ -129,6 +149,7 @@ class Game:
         self._player_name = player_name
         self._running = True
         self._score = INITIAL_SCORE
+        self._bomberman = Bomberman(self.map.bomberman_spawn, self._initial_lives)
 
         self.next_level(self.initial_level)
 
@@ -144,17 +165,17 @@ class Game:
 
         logger.info("NEXT LEVEL")
         self.map = Map(level=level, size=self.map.size, enemies=len(LEVEL_ENEMIES[level]))
+        self._bomberman.respawn()
         self._step = 0
-        self._bomberman = Bomberman(self.map.bomberman_spawn, self._initial_lives)
         self._bombs = []
         self._powerups = []
         self._bonus = []
         self._exit = []
         self._lastkeypress = ""
-        self._bomb_radius = 3
         self._enemies = [
             t(p) for t, p in zip(LEVEL_ENEMIES[level], self.map.enemies_spawn)
         ]
+        logger.debug(self._enemies)
 
     def quit(self):
         logger.debug("Quit")
@@ -185,9 +206,9 @@ class Game:
             else:
                 # Update position
                 new_pos = self.map.calc_pos(
-                    self._bomberman.pos, self._lastkeypress
+                    self._bomberman.pos, self._lastkeypress, self._bomberman.wallpass
                 )  # don't bump into stones/walls
-                if new_pos not in [b.pos for b in self._bombs]:  # don't pass over bombs
+                if self._bomberman.bombpass or new_pos not in [b.pos for b in self._bombs]:  # don't pass over bombs
                     self._bomberman.pos = new_pos
                 for pos, _type in self._powerups:  # consume powerups
                     if new_pos == pos:
@@ -227,7 +248,7 @@ class Game:
             bomb.update()
             if bomb.exploded():
                 logger.debug("BOOM")
-                if bomb.in_range(self._bomberman):
+                if bomb.in_range(self._bomberman) and not self._bomberman.flamepass:
                     self.kill_bomberman()
 
                 for wall in self.map.walls[:]:
@@ -267,14 +288,15 @@ class Game:
 
         self.explode_bomb()
         self.update_bomberman()
+        self.collision()
 
         if (
             self._step % (self._bomberman.powers.count(Powerups.Speed) + 1) == 0
         ):  # increase speed of bomberman by moving enemies less often
             for enemy in self._enemies:
-                enemy.move(self.map, self._bomberman, self._bombs)
+                enemy.move(self.map, self._bomberman, self._bombs, self._enemies)
+            self.collision()
 
-        self.collision()
         self._state = {
             "level": self.map.level,
             "step": self._step,
@@ -284,7 +306,7 @@ class Game:
             "lives": self._bomberman.lives,
             "bomberman": self._bomberman.pos,
             "bombs": [(b.pos, b.timeout, b.radius) for b in self._bombs],
-            "enemies": [{"name": str(e), "pos": e.pos} for e in self._enemies],
+            "enemies": [{"name": str(e), "id": str(e.id), "pos": e.pos} for e in self._enemies],
             "walls": self.map.walls,
             "powerups": [(p, Powerups(n).name) for p, n in self._powerups],
             "bonus": self._bonus,
