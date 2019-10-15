@@ -52,14 +52,14 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     if exit != []:# ir para a saida
                         print("pppppppppppppppppppppppp")
                         path = to_exit(player_pos, exit ,mapa)
-                        for x in range(100): # w8
-                            actions_in_queue.put("")
+                        wait(100)
                         
 
                     elif near_wall(player_pos,nearest_wall):
                         plant_bomb()
-                        dodge_bomb(path, 6)
                         websocket.recv()
+                        dodge_bomb(path, 6)
+                        
 
                     path = go2(player_pos, nearest_wall ,mapa)
                     websocket.recv()
@@ -236,9 +236,11 @@ def dodge_bomb(path, d_range):
 
     coord2dir(last)
 
-    for x in range(5): # w8
-        actions_in_queue.put("")
+    wait(5)
 
+def wait(wait_time):
+    for x in range(wait_time): # w8
+        actions_in_queue.put("")
 def side_step(pos):
     if even_number(pos[0]):
         pos = pos[0]-1, pos[1]
