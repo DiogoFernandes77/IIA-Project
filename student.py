@@ -14,6 +14,7 @@ import pygame
 pygame.init()
 
 actions_in_queue = queue.Queue(100)
+
 async def agent_loop(server_address="localhost:8000", agent_name="89221"):
     async with websockets.connect(f"ws://{server_address}/player") as websocket:
        
@@ -29,7 +30,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         SCREEN = pygame.display.set_mode((299, 123))
         SPRITES = pygame.image.load("data/pad.png").convert_alpha()
         SCREEN.blit(SPRITES, (0, 0))
-        
+        k = 0
         while True:
            
             try:
@@ -37,29 +38,32 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
                 player_pos = state["bomberman"]
+                
                 wall_list = state["walls"]
-                nearest_wall = entity_finder(player_pos,wall_list) #argumentos(pos do bomberman,lista das pos das paredes no mapa)
+                websocket.recv()
+                
+                exit = state["exit"]
+                print(exit)
+                nearest_wall = entity_finder(player_pos,wall_list)
                 key = "" 
+        
                 if(actions_in_queue.empty()):
-                    if near_wall(player_pos,nearest_wall):
-                        
-                        actions_in_queue.put("B")
 
-                        tres_ultimos = path[-5:]
-                        print(tres_ultimos[::-1])
-                        last_3 = tres_ultimos[::-1]
-                        coord2dir(last_3)
-                        websocket.recv()
-                        for x in range(6):
+                    if exit != []:# ir para a saida
+                        print("pppppppppppppppppppppppp")
+                        path = to_exit(player_pos, exit ,mapa)
+                        for x in range(100): # w8
                             actions_in_queue.put("")
+                        
+
+                    elif near_wall(player_pos,nearest_wall):
+                        plant_bomb()
+                        dodge_bomb(path, 6)
                         websocket.recv()
-                    step_pos = side_step(nearest_wall)
+
+                    path = go2(player_pos, nearest_wall ,mapa)
                     websocket.recv()
-                    print(nearest_wall)
-                    path = astar(mapa.map, player_pos, step_pos ,mapa)
-                    websocket.recv()
-                    coord2dir(path)
-                    print(path)
+
                 key = actions_in_queue.get()
                 websocket.recv()
                 await websocket.send(
@@ -75,7 +79,7 @@ def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
     return False
 
 def entity_finder(minha_pos,walls_pos): # funçao para encontrar o objeto mais proximo
-    distancia= 1000 # valor alto so para fazer a primeira comparaçao, pode ser alterado no futuro para uma melhor maneira
+    distancia= 1000 # valor alto so para fa step_pos = side_step(nearest_wall)
     for pos in walls_pos:
         distancia_tmp = distancia_calculation(minha_pos,pos)
         if(distancia_tmp < distancia):
@@ -109,7 +113,7 @@ class Node():
         return self.position == other.position
 
 
-def astar(maze, player_pos, dst_pos, mapa):
+def mover(maze, player_pos, dst_pos, mapa):
     """Returns a list of tuples as a path from the given start to the given end in the given maze"""
 
     # Create start and end node
@@ -216,6 +220,25 @@ def coord2dir(lista):
         if(res == (-1,0)):
             actions_in_queue.put("a")
 
+def go2(player_pos, wall ,mapa):
+    step_pos = side_step(wall)
+    path = mover(mapa.map, player_pos, step_pos ,mapa)
+    coord2dir(path)  
+    return path
+
+def plant_bomb():
+     
+    actions_in_queue.put("B")
+ 
+def dodge_bomb(path, d_range):
+    last_steps = path[-d_range:]
+    last = last_steps[::-1]
+
+    coord2dir(last)
+
+    for x in range(5): # w8
+        actions_in_queue.put("")
+
 def side_step(pos):
     if even_number(pos[0]):
         pos = pos[0]-1, pos[1]
@@ -227,6 +250,15 @@ def side_step(pos):
         pos = pos[0], pos[1]-1
     
     return pos
+
+def to_exit(player_pos, exit ,mapa):
+    step_pos = side_step(exit)
+    path = mover(mapa.map, player_pos, step_pos ,mapa)
+    path.append(exit)
+    print(path)
+    coord2dir(path)
+    return path
+              
 # DO NOT CHANGE THE LINES BELLOW
 # You can change the default values using the command line, example:
 # $ NAME='bombastico' python3 client.py
