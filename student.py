@@ -14,6 +14,7 @@ import pygame
 pygame.init()
 
 actions_in_queue = queue.Queue(100)
+total_path = []
 
 async def agent_loop(server_address="localhost:8000", agent_name="89221"):
     async with websockets.connect(f"ws://{server_address}/player") as websocket:
@@ -25,12 +26,13 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
 
         # You can create your own map representation or use the game representation:
         mapa = Map(size=game_properties["size"], mapa=game_properties["map"])
-
         # Next 3 lines are not needed for AI agent
         SCREEN = pygame.display.set_mode((299, 123))
         SPRITES = pygame.image.load("data/pad.png").convert_alpha()
         SCREEN.blit(SPRITES, (0, 0))
         k = 0
+        global total_path
+
         while True:
            
             try:
@@ -38,34 +40,44 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
                 player_pos = state["bomberman"]
-                
                 wall_list = state["walls"]
                 websocket.recv()
-                
+                enemy_pos = []
+                for i in range (5):
+                    if(state["enemies"][i]['pos']==[]):
+                        continue
+                    enemy_pos.append(state["enemies"][i]['pos'])
+
+                websocket.recv()
+                #print("p"+str(enemy_pos))
                 exit = state["exit"]
-                print(exit)
+                #print(exit)
                 nearest_wall = entity_finder(player_pos,wall_list)
                 key = "" 
         
                 if(actions_in_queue.empty()):
-
-                    if exit != []:# ir para a saida
-                        print("pppppppppppppppppppppppp")
-                        path = to_exit(player_pos, exit ,mapa)
-                        wait(100)
-                        
-
-                    elif near_wall(player_pos,nearest_wall):
+                    
+                    #if exit != []:# ir para a saida
+                     #   print("pppppppppppppppppppppppp")
+                      #  path = to_exit(player_pos, exit ,mapa)
+                       # wait(100)
+                    
+            
+                    #if(enemy_pos != []): 
+                        #kill_ballon(mapa, player_pos, enemy_pos,wall_list)   
+                    websocket.recv()
+                    go2wall(player_pos, nearest_wall,mapa)
+                    total_path = total_path[:10] # ultimas 10 pos
+                    websocket.recv()
+                    
+                    if near_wall(player_pos,nearest_wall):
                         plant_bomb()
                         websocket.recv()
-                        dodge_bomb(path, 6)
-                        
-
-                    path = go2(player_pos, nearest_wall ,mapa)
-                    websocket.recv()
-
+                        dodge_bomb(total_path, 6)
+                    
                 key = actions_in_queue.get()
                 websocket.recv()
+
                 await websocket.send(
                             json.dumps({"cmd": "key", "key": key})
                         )  # send key command to server - you must implement this send in the AI agent
@@ -78,9 +90,9 @@ def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
         return True
     return False
 
-def entity_finder(minha_pos,walls_pos): # funçao para encontrar o objeto mais proximo
+def entity_finder(minha_pos,obj_pos): # funçao para encontrar o objeto mais proximo
     distancia= 1000 # valor alto so para fa step_pos = side_step(nearest_wall)
-    for pos in walls_pos:
+    for pos in obj_pos:
         distancia_tmp = distancia_calculation(minha_pos,pos)
         if(distancia_tmp < distancia):
             distancia = distancia_tmp
@@ -200,7 +212,9 @@ def mover(maze, player_pos, dst_pos, mapa):
             # Add the child to the open list
             #print(child)
             open_list.append(child) 
+
 def coord2dir(lista):
+    global total_path
     anterior = lista[0]
 
     for elem in lista[1:]:
@@ -219,12 +233,17 @@ def coord2dir(lista):
 
         if(res == (-1,0)):
             actions_in_queue.put("a")
+    total_path = total_path + lista[1:]
 
-def go2(player_pos, wall ,mapa):
+def go2wall(player_pos, wall ,mapa):
+    global total_path
     step_pos = side_step(wall)
-    path = mover(mapa.map, player_pos, step_pos ,mapa)
-    coord2dir(path)  
-    return path
+    #print("aqui")
+    p = mover(mapa.map, player_pos, step_pos ,mapa)
+
+    coord2dir(p) 
+    return p
+    
 
 def plant_bomb():
      
@@ -233,10 +252,10 @@ def plant_bomb():
 def dodge_bomb(path, d_range):
     last_steps = path[-d_range:]
     last = last_steps[::-1]
-
+    print("dodge"+str(last))
     coord2dir(last)
-
     wait(5)
+    #return last
 
 def wait(wait_time):
     for x in range(wait_time): # w8
@@ -253,14 +272,39 @@ def side_step(pos):
     
     return pos
 
-def to_exit(player_pos, exit ,mapa):
+def to_exit(player_pos, exit ,mapa): # ver dps
     step_pos = side_step(exit)
     path = mover(mapa.map, player_pos, step_pos ,mapa)
     path.append(exit)
     print(path)
     coord2dir(path)
-    return path
-              
+    #return path
+
+def kill_ballon(mapa, player_pos, enemy_pos, wall_list, path):
+    b_pos = entity_finder(player_pos, enemy_pos)
+    global total_path
+
+    if(path) < 3:
+        wall = entity_finder(player_pos, wall_list)
+        p = go2wall(player_pos,wall,path)
+        total_path = total_path + p[1:]
+
+    else:
+        p = mover(mapa.map, player_pos, side_step(b_pos),mapa)
+        p.append(b_pos)
+        coord2dir(p)
+        total_path = total_path + p[1:]
+        
+
+    if map(near_wall, wall_list):
+        plant_bomb()
+        dodge_bomb(p, 4)
+
+    if distancia_calculation(player_pos,enemy_pos) == 3 and (player_pos[0] == enemy_pos[0] or player_pos[1] == enemy_pos[1]):
+        plant_bomb()
+        dodge_bomb(p, 4)
+    
+
 # DO NOT CHANGE THE LINES BELLOW
 # You can change the default values using the command line, example:
 # $ NAME='bombastico' python3 client.py
