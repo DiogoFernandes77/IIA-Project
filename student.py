@@ -40,19 +40,26 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
                 player_pos = state["bomberman"]
+                websocket.recv()
                 wall_list = state["walls"]
                 websocket.recv()
                 enemy_pos = []
                 for i in range (5):
-                    if(state["enemies"][i]['pos']==[]):
-                        continue
-                    enemy_pos.append(state["enemies"][i]['pos'])
+                    try:
+                        if(state["enemies"][i]['pos']==[]):
+                            continue
+                        enemy_pos.append(state["enemies"][i]['pos'])
+                    except IndexError:
+                        print("erro id " +i+ "eliminado")
 
+               
                 websocket.recv()
                 #print("p"+str(enemy_pos))
                 exit = state["exit"]
+                websocket.recv()
                 #print(exit)
                 nearest_wall = entity_finder(player_pos,wall_list)
+                websocket.recv()
                 key = "" 
         
                 if(actions_in_queue.empty()):
@@ -65,15 +72,15 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
             
                     #if(enemy_pos != []): 
                         #kill_ballon(mapa, player_pos, enemy_pos,wall_list)   
-                    websocket.recv()
+                    # ver como vamos chamar para matar o balao(ex qnd apanharmos um powerup ou quando tiver dentro do range)
+
                     go2wall(player_pos, nearest_wall,mapa)
-                    total_path = total_path[:10] # ultimas 10 pos
                     websocket.recv()
                     
                     if near_wall(player_pos,nearest_wall):
                         plant_bomb()
+                        dodge_bomb(total_path, 5)
                         websocket.recv()
-                        dodge_bomb(total_path, 6)
                     
                 key = actions_in_queue.get()
                 websocket.recv()
@@ -215,6 +222,7 @@ def mover(maze, player_pos, dst_pos, mapa):
 
 def coord2dir(lista):
     global total_path
+    print("lista de entrada"+str(lista))
     anterior = lista[0]
 
     for elem in lista[1:]:
@@ -234,13 +242,18 @@ def coord2dir(lista):
         if(res == (-1,0)):
             actions_in_queue.put("a")
     total_path = total_path + lista[1:]
+    print("total path antes ->" +str(total_path))
+    total_path = total_path[-10:] # ultimas 10 pos
+    print("total path ->" +str(total_path))
 
 def go2wall(player_pos, wall ,mapa):
-    global total_path
+    
     step_pos = side_step(wall)
+    if(player_pos[0] and step_pos[0] and player_pos[1] == step_pos[1]): # resolve o problema de mandar para ele proprio
+        return
     #print("aqui")
     p = mover(mapa.map, player_pos, step_pos ,mapa)
-
+    print("aastar"+ str(p))
     coord2dir(p) 
     return p
     
@@ -280,29 +293,27 @@ def to_exit(player_pos, exit ,mapa): # ver dps
     coord2dir(path)
     #return path
 
-def kill_ballon(mapa, player_pos, enemy_pos, wall_list, path):
+def kill_ballon(mapa, player_pos, enemy_pos, wall_list): 
     b_pos = entity_finder(player_pos, enemy_pos)
     global total_path
 
-    if(path) < 3:
+    if(total_path) < 3:
         wall = entity_finder(player_pos, wall_list)
-        p = go2wall(player_pos,wall,path)
-        total_path = total_path + p[1:]
+        go2wall(player_pos,wall,total_path)
+        
 
     else:
         p = mover(mapa.map, player_pos, side_step(b_pos),mapa)
         p.append(b_pos)
         coord2dir(p)
-        total_path = total_path + p[1:]
-        
-
+       
     if map(near_wall, wall_list):
         plant_bomb()
-        dodge_bomb(p, 4)
+        dodge_bomb(total_path, 5)
 
-    if distancia_calculation(player_pos,enemy_pos) == 3 and (player_pos[0] == enemy_pos[0] or player_pos[1] == enemy_pos[1]):
+    if distancia_calculation(player_pos,b_pos) == 3 and (player_pos[0] == enemy_pos[0] or player_pos[1] == enemy_pos[1]):
         plant_bomb()
-        dodge_bomb(p, 4)
+        dodge_bomb(total_path, 4)
     
 
 # DO NOT CHANGE THE LINES BELLOW
