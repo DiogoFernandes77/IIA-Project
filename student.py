@@ -6,6 +6,7 @@ import getpass
 import os
 import math
 import queue
+import time
 from mapa import Map
 
 # Next 2 lines are not needed for AI agent
@@ -40,18 +41,11 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
                 player_pos = state["bomberman"]
-                websocket.recv()
+               
                 wall_list = state["walls"]
                 websocket.recv()
                 enemy_pos = []
-                for i in range (5):
-                    try:
-                        if(state["enemies"][i]['pos']==[]):
-                            continue
-                        enemy_pos.append(state["enemies"][i]['pos'])
-                    except IndexError:
-                        print("erro id " +i+ "eliminado")
-
+                
                
                 websocket.recv()
                 #print("p"+str(enemy_pos))
@@ -97,6 +91,15 @@ def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
         return True
     return False
 
+def nearest_enemy(minha_pos,enemies_list):
+    distancia = 1000;
+    
+    for x in range(5):
+        distancia_tmp = distancia_calculation(minha_pos,enemies_list[x]["pos"])
+        if(distancia_tmp < distancia):
+            distancia = distancia_tmp;
+            pos = enemies_list[x]["pos"]
+    return pos;
 def entity_finder(minha_pos,obj_pos): # funçao para encontrar o objeto mais proximo
     distancia= 1000 # valor alto so para fa step_pos = side_step(nearest_wall)
     for pos in obj_pos:
