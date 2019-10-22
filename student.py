@@ -44,8 +44,12 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 wall_list = state["walls"]
                 mapa._walls = wall_list
                 
-                enemy_pos = []
-
+                enemy_list = state["enemies"]
+                for x in enemy_list:
+                    pos = x["pos"]
+                    print(pos)
+                print("eni "+str(len(enemy_list)))
+               
                 size = 5
                 # for i in range (size):
                 #     try:
@@ -154,6 +158,7 @@ class Node():
 def mover(player_pos, dst_pos):
     """Returns a list of tuples as a path from the given start to the given end in the given maze"""
     global mapa
+    global enemy_list
     maze = mapa.map
     # Create start and end node
     start_node = Node(None, player_pos)
@@ -208,7 +213,7 @@ def mover(player_pos, dst_pos):
                 continue
             
             # Make sure walkable terrain
-            if mapa.is_blocked((node_position[0],node_position[1])): #maze[node_position[0]][node_position[1]] != 0:
+            if mapa.is_blocked((node_position[0],node_position[1]) or isObs(node_position, enemy_list)): #maze[node_position[0]][node_position[1]] != 0:
                 #print("stone")
                 continue
 
@@ -281,7 +286,7 @@ def dodge2(bomb_pos, bomb, mapa, wall_list):
         p1 = next_pos.get()
         for pos in [(0,1),(0,-1),(1,0),(-1,0)]:
             new_pos = (p1[0] + pos[0], p1[1] + pos[1])
-            if(mapa.is_blocked(new_pos) or isWall(new_pos, wall_list)):
+            if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list)):
                 print("1")
             else:
                 if(not bomb.in_range(new_pos)):
@@ -293,7 +298,7 @@ def plant_bomb():
      
     actions_in_queue.put("B")
  
-def wait(wait_time):
+def wait(wait_time): #fazer w8 para time out da bomba
     for x in range(wait_time): # w8
         actions_in_queue.put("")
 def side_step(pos):
@@ -307,11 +312,14 @@ def side_step(pos):
         pos = pos[0], pos[1]-1
     
     return pos
-def isWall(pos, wall_list):
-    for x in wall_list:
+
+def isObs(pos, list):
+    for x in list:
         if pos[0] == x[0] and pos[1] == x[1]:
             return True
     return False
+
+
 
 def to_exit(player_pos, exit ,mapa): # ver dps
     step_pos = side_step(exit)
