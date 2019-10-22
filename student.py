@@ -40,10 +40,11 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
                 player_pos = state["bomberman"]
-                websocket.recv()
+               
                 wall_list = state["walls"]
                 websocket.recv()
                 enemy_pos = []
+
                 size = 5
                 # for i in range (size):
                 #     try:
@@ -83,7 +84,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     if near_wall(player_pos,nearest_wall):
                         plant_bomb()
                         #go2wall(player_pos,(3,3),mapa)
-                        dodge2(6)
+                        dodge2(4)
                         websocket.recv()
                     
                 key = actions_in_queue.get()
@@ -102,6 +103,15 @@ def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
         return True
     return False
 
+def nearest_enemy(minha_pos,enemies_list):
+    distancia = 1000;
+    
+    for x in range(5):
+        distancia_tmp = distancia_calculation(minha_pos,enemies_list[x]["pos"])
+        if(distancia_tmp < distancia):
+            distancia = distancia_tmp;
+            pos = enemies_list[x]["pos"]
+    return pos;
 def entity_finder(minha_pos,obj_pos): # funçao para encontrar o objeto mais proximo
     distancia= 1000 # valor alto so para fa step_pos = side_step(nearest_wall)
     for pos in obj_pos:
