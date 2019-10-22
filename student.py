@@ -8,6 +8,7 @@ import math
 import queue
 import time
 from mapa import Map
+from game import Bomb
 
 # Next 2 lines are not needed for AI agent
 import pygame
@@ -40,9 +41,9 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
                 player_pos = state["bomberman"]
-               
                 wall_list = state["walls"]
-                websocket.recv()
+                mapa._walls = wall_list
+                
                 enemy_pos = []
 
                 size = 5
@@ -57,13 +58,13 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 #         print("erro id " +i+ "eliminado")
 
                
-                websocket.recv()
+               
                 #print("p"+str(enemy_pos))
                 exit = state["exit"]
-                websocket.recv()
+                
                 #print(exit)
                 nearest_wall = entity_finder(player_pos,wall_list)
-                websocket.recv()
+                
                 key = "" 
         
                 if(actions_in_queue.empty()):
@@ -79,17 +80,20 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     # ver como vamos chamar para matar o balao(ex qnd apanharmos um powerup ou quando tiver dentro do range)
 
                     go2wall(player_pos, nearest_wall,mapa)
-                    websocket.recv()
                     
                     if near_wall(player_pos,nearest_wall):
                         plant_bomb()
+                        bomb = Bomb(player_pos, mapa, 3)
+                        p = dodge2(player_pos, bomb, mapa, wall_list)
+                        print(p)
+                        m1 = mover(player_pos, p)
+                        print(m1)
+                        coord2dir(m1)
+                        wait(5)
                         #go2wall(player_pos,(3,3),mapa)
-                        dodge2(4)
-                        websocket.recv()
                     
                 key = actions_in_queue.get()
                 dodge_stack.append(key)
-                websocket.recv()
 
                 await websocket.send(
                             json.dumps({"cmd": "key", "key": key})
@@ -104,14 +108,14 @@ def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
     return False
 
 def nearest_enemy(minha_pos,enemies_list):
-    distancia = 1000;
+    distancia = 1000
     
     for x in range(5):
         distancia_tmp = distancia_calculation(minha_pos,enemies_list[x]["pos"])
         if(distancia_tmp < distancia):
-            distancia = distancia_tmp;
+            distancia = distancia_tmp
             pos = enemies_list[x]["pos"]
-    return pos;
+    return pos
 def entity_finder(minha_pos,obj_pos): # funçao para encontrar o objeto mais proximo
     distancia= 1000 # valor alto so para fa step_pos = side_step(nearest_wall)
     for pos in obj_pos:
@@ -269,21 +273,21 @@ def go2wall(player_pos, wall ,mapa):
     coord2dir(p) 
     return p
 
-def dodge2(n_steps):
-    global dodge_stack
-
-    for i in range(n_steps):
-        p = dodge_stack.pop()
-        if(p == "a"):
-            actions_in_queue.put("d")
-        if(p == "d"):
-            actions_in_queue.put("a")
-        if(p == "s"):
-            actions_in_queue.put("w")
-        if(p == "w"):
-            actions_in_queue.put("s")
-    
-    wait(5)
+def dodge2(bomb_pos, bomb, mapa, wall_list):
+    next_pos = queue.Queue(100)
+    next_pos.put(bomb_pos)
+    print(bomb_pos)
+    while(1):
+        p1 = next_pos.get()
+        for pos in [(0,1),(0,-1),(1,0),(-1,0)]:
+            new_pos = (p1[0] + pos[0], p1[1] + pos[1])
+            if(mapa.is_blocked(new_pos) or isWall(new_pos, wall_list)):
+                print("1")
+            else:
+                if(not bomb.in_range(new_pos)):
+                    print(new_pos)
+                    return new_pos
+                next_pos.put(new_pos)
 
 def plant_bomb():
      
@@ -303,6 +307,11 @@ def side_step(pos):
         pos = pos[0], pos[1]-1
     
     return pos
+def isWall(pos, wall_list):
+    for x in wall_list:
+        if pos[0] == x[0] and pos[1] == x[1]:
+            return True
+    return False
 
 def to_exit(player_pos, exit ,mapa): # ver dps
     step_pos = side_step(exit)
