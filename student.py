@@ -15,11 +15,11 @@ import pygame
 pygame.init()
 
 actions_in_queue = queue.Queue(100)
-total_path = []
 
+dodge_stack = []
 async def agent_loop(server_address="localhost:8000", agent_name="89221"):
     async with websockets.connect(f"ws://{server_address}/player") as websocket:
-       
+        global mapa
         # Receive information about static game properties
         await websocket.send(json.dumps({"cmd": "join", "name": agent_name}))
         msg = await websocket.recv()
@@ -32,11 +32,10 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         SPRITES = pygame.image.load("data/pad.png").convert_alpha()
         SCREEN.blit(SPRITES, (0, 0))
         k = 0
-        global total_path
 
         while True:
-           
             try:
+                print("tempo "+str(time.time()))
                 state = json.loads(
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
@@ -45,7 +44,18 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 wall_list = state["walls"]
                 websocket.recv()
                 enemy_pos = []
-                
+
+                size = 5
+                # for i in range (size):
+                #     try:
+                #         if(len(state["enemies"][i + 1]['pos']==[])) < size): # resolve index error
+                #             size -=1
+                #         if(state["enemies"][i]['pos']==[]):
+                #             continue
+                #         enemy_pos.append(state["enemies"][i]['pos'])
+                #     except IndexError:
+                #         print("erro id " +i+ "eliminado")
+
                
                 websocket.recv()
                 #print("p"+str(enemy_pos))
@@ -73,10 +83,12 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     
                     if near_wall(player_pos,nearest_wall):
                         plant_bomb()
-                        dodge_bomb(total_path, 5)
+                        #go2wall(player_pos,(3,3),mapa)
+                        dodge2(4)
                         websocket.recv()
                     
                 key = actions_in_queue.get()
+                dodge_stack.append(key)
                 websocket.recv()
 
                 await websocket.send(
@@ -135,9 +147,10 @@ class Node():
         return self.position == other.position
 
 
-def mover(maze, player_pos, dst_pos, mapa):
+def mover(player_pos, dst_pos):
     """Returns a list of tuples as a path from the given start to the given end in the given maze"""
-
+    global mapa
+    maze = mapa.map
     # Create start and end node
     start_node = Node(None, player_pos)
     #print(start_node)
@@ -224,7 +237,6 @@ def mover(maze, player_pos, dst_pos, mapa):
             open_list.append(child) 
 
 def coord2dir(lista):
-    global total_path
     print("lista de entrada"+str(lista))
     anterior = lista[0]
 
@@ -244,35 +256,39 @@ def coord2dir(lista):
 
         if(res == (-1,0)):
             actions_in_queue.put("a")
-    total_path = total_path + lista[1:]
-    print("total path antes ->" +str(total_path))
-    total_path = total_path[-10:] # ultimas 10 pos
-    print("total path ->" +str(total_path))
+    
 
 def go2wall(player_pos, wall ,mapa):
     
     step_pos = side_step(wall)
-    if(player_pos[0] and step_pos[0] and player_pos[1] == step_pos[1]): # resolve o problema de mandar para ele proprio
+    if(player_pos[0] == step_pos[0] and player_pos[1] == step_pos[1]): # resolve o problema de mandar para ele proprio
         return
     #print("aqui")
-    p = mover(mapa.map, player_pos, step_pos ,mapa)
+    p = mover(player_pos, step_pos)
     print("aastar"+ str(p))
     coord2dir(p) 
     return p
+
+def dodge2(n_steps):
+    global dodge_stack
+
+    for i in range(n_steps):
+        p = dodge_stack.pop()
+        if(p == "a"):
+            actions_in_queue.put("d")
+        if(p == "d"):
+            actions_in_queue.put("a")
+        if(p == "s"):
+            actions_in_queue.put("w")
+        if(p == "w"):
+            actions_in_queue.put("s")
     
+    wait(5)
 
 def plant_bomb():
      
     actions_in_queue.put("B")
  
-def dodge_bomb(path, d_range):
-    last_steps = path[-d_range:]
-    last = last_steps[::-1]
-    print("dodge"+str(last))
-    coord2dir(last)
-    wait(5)
-    #return last
-
 def wait(wait_time):
     for x in range(wait_time): # w8
         actions_in_queue.put("")
@@ -290,7 +306,7 @@ def side_step(pos):
 
 def to_exit(player_pos, exit ,mapa): # ver dps
     step_pos = side_step(exit)
-    path = mover(mapa.map, player_pos, step_pos ,mapa)
+    path = mover(player_pos, step_pos)
     path.append(exit)
     print(path)
     coord2dir(path)
@@ -298,25 +314,7 @@ def to_exit(player_pos, exit ,mapa): # ver dps
 
 def kill_ballon(mapa, player_pos, enemy_pos, wall_list): 
     b_pos = entity_finder(player_pos, enemy_pos)
-    global total_path
-
-    if(total_path) < 3:
-        wall = entity_finder(player_pos, wall_list)
-        go2wall(player_pos,wall,total_path)
-        
-
-    else:
-        p = mover(mapa.map, player_pos, side_step(b_pos),mapa)
-        p.append(b_pos)
-        coord2dir(p)
-       
-    if map(near_wall, wall_list):
-        plant_bomb()
-        dodge_bomb(total_path, 5)
-
-    if distancia_calculation(player_pos,b_pos) == 3 and (player_pos[0] == enemy_pos[0] or player_pos[1] == enemy_pos[1]):
-        plant_bomb()
-        dodge_bomb(total_path, 4)
+    
     
 
 # DO NOT CHANGE THE LINES BELLOW
