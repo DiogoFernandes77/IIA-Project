@@ -92,10 +92,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                             else:
                                 wait(10)
                 
-                if(check_count == 0):
-                    in_danger(player_pos)
-                else:
-                    check_count -= 1
+                in_danger(player_pos)
                     
                 print(check_count)
                             
@@ -124,17 +121,19 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
 def in_danger(player_pos):
     global mapa
     global check_count
-    
-    for pos in get_enemyPos():
-        if(distancia_calculation(player_pos,pos) <= 2):
-            actions_in_queue.queue.clear()
-            plant_bomb()
-            bomb = Bomb(player_pos,mapa,3)
-            p = dodge2(player_pos, bomb, mapa)
-            m1 = mover(player_pos, p)
-            check_count = len(m1) +8
-            coord2dir(m1)
-            wait(7)
+    if(check_count == 0):
+        for pos in get_enemyPos():
+            if(distancia_calculation(player_pos,pos) <= 2):
+                actions_in_queue.queue.clear()
+                plant_bomb()
+                bomb = Bomb(player_pos,mapa,3)
+                p = dodge2(player_pos, bomb, mapa)
+                m1 = mover(player_pos, p)
+                check_count = len(m1) +8
+                coord2dir(m1)
+                wait(7)
+    else:
+        check_count -= 1
     
 
 def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
