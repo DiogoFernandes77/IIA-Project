@@ -102,16 +102,7 @@ def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
     if distancia_calculation(bomberman,next_move) == 1:
         return True
     return False
-
-def nearest_enemy(minha_pos,enemies_list): #função que deteta na lista o objeto mais proximo pa minha_pos
-    distancia = 1000
     
-    for x in range(5):
-        distancia_tmp = distancia_calculation(minha_pos,enemies_list[x]["pos"])
-        if(distancia_tmp < distancia):
-            distancia = distancia_tmp
-            pos = enemies_list[x]["pos"]
-    return pos
 def entity_finder(minha_pos,obj_pos): # funçao para encontrar o objeto mais proximo
     distancia= 1000 # valor alto so para fa step_pos = side_step(nearest_wall)
     for pos in obj_pos:
