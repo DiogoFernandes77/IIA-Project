@@ -17,7 +17,7 @@ VITAL_SPACE = 3
 
 
 class Map:
-    def __init__(self, level=1, enemies=0, size=(VITAL_SPACE+10, VITAL_SPACE+10), mapa=None, enemies_spawn=[], empty=False):
+    def __init__(self, level=1, enemies=0, size=(VITAL_SPACE+10, VITAL_SPACE+10), mapa=None, enemies_spawn=None, empty=False):
 
         assert size[0] > VITAL_SPACE+9
         assert size[1] > VITAL_SPACE+9
@@ -27,7 +27,10 @@ class Map:
         self.hor_tiles = size[0]
         self.ver_tiles = size[1]
         self._walls = []
-        self._enemies_spawn = enemies_spawn
+        if enemies_spawn:
+            self._enemies_spawn = enemies_spawn
+        else:
+            self._enemies_spawn = []
 
         if not mapa:
             logger.info("Generating a MAP")
@@ -56,6 +59,7 @@ class Map:
                         random.randrange(VITAL_SPACE, self.ver_tiles),
                     )
                 self._enemies_spawn.append((x, y))
+                logger.debug(f"Spawn enemy at ({x}, {y})")
                 # create a vital space for enemies:
                 for rx, ry in [(x, y) for x in [-1, 0, 1] for y in [-1, 0, 1]]:
                     if self.map[x + rx][y + ry] in [Tiles.WALL]:
@@ -90,6 +94,10 @@ class Map:
     @property
     def walls(self):
         return self._walls
+
+    @walls.setter
+    def walls(self, walls):
+        self._walls = [ (x, y) for x, y in walls ] 
 
     def remove_wall(self, wall):
         self._walls.remove(wall)
