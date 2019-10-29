@@ -75,7 +75,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 
                 
                 if(actions_in_queue.empty()):
-                    
+                    flag  = 0
                     if exit != [] and len(enemy_list) == 0:# ir para a saida, se os monstros estiverem todos mortos
                             print("pppppppppppppppppppppppp")
                             saida = (exit[0],exit[1])
@@ -101,7 +101,10 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 else:
                     print("queue vazia")
                     key = ""
-                in_danger(player_pos,key)
+                if in_danger(player_pos,key):
+                    get_out()
+                    key = actions_in_queue.get()
+
                 await websocket.send(
                             json.dumps({"cmd": "key", "key": key})
                         )  # send key command to server - you must implement this send in the AI agent
@@ -269,18 +272,20 @@ def coord2dir(lista):
 def go2wall(player_pos, wall ,mapa):
     
     step_pos = side_step(wall)
-    if(player_pos[0] == step_pos[0] and player_pos[1] == step_pos[1]): # resolve o problema de mandar para ele proprio
-        return
+    # if(player_pos[0] == step_pos[0] and player_pos[1] == step_pos[1]): # resolve o problema de mandar para ele proprio
+    #     return
     #print("aqui")
     p = mover(player_pos, step_pos)
     coord2dir(p)
+
 def canDodge(pos, r):
     global mapa
     b = Bomb(pos, mapa, r)
     if dodge2(pos,b,mapa) == False:
-        canDodge(pos, r)
+        return False
     else:
-        return True    
+        return True
+
 def dodge2(bomb_pos, bomb, mapa):
     global danger_zone
     global wall_list
@@ -313,7 +318,7 @@ def plant_bomb():
         m1 = mover(player_pos, p1)
         coord2dir(m1)
         wait(7)
-    else: plant_bomb()
+    else: wait(1)
  
 def wait(wait_time): #fazer w8 para time out da bomba
     for x in range(wait_time): # w8
@@ -376,7 +381,7 @@ def dir_ballon(enemy_pos):
         
 
    # print("prev ->"+ str(prev))
-    print("enemy_pos->" + str(enemy_pos))
+    #print("enemy_pos->" + str(enemy_pos))
     for index in range(len(enemy_pos)):
         
         c1 = enemy_pos[index][0]-prev[index][0]
@@ -438,12 +443,13 @@ def calc_danger(enemy_pos,list_diretions):
     for i in range(size):
         danger_zone.append((danger_zone[i][0] - 2*dir[i][0], danger_zone[i][1] - 2*dir[i][1])) # 1 atrás
         danger_zone.append((danger_zone[i][0] + dir[i][0], danger_zone[i][1] + dir[i][1])) #adiciona 2 à frente
-    print(danger_zone)
+    #print(danger_zone)
 
 def in_danger(player_pos,key):
     global mapa
     global check_count
     global danger_zone
+    global mapa
     movement = (0,0)
     if(key == "w"):
         movement = (0,-1)
@@ -457,17 +463,17 @@ def in_danger(player_pos,key):
     next_pos = (player_pos[0] + movement[0], player_pos[1] + movement[1])
     
     if(isObs(next_pos,get_enemyPos()) or isObs(next_pos, danger_zone)):
-        actions_in_queue.queue.clear()
-        canDodge(player_pos,3)
-        
+        print("aquis")
+        return True
 
-
-
-
-
-
-    
-
+def get_out():
+    global player_pos
+    actions_in_queue.queue.clear()
+    b = Bomb(player_pos,mapa,2)
+    p1 = dodge2(player_pos,b,mapa)
+    m1 = mover(player_pos, p1)
+    coord2dir(m1)
+    wait(1)
 # DO NOT CHANGE THE LINES BELLOW
 # You can change the default values using the command line, example:
 # $ NAME='bombastico' python3 client.py
