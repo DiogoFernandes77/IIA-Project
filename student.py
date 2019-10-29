@@ -27,6 +27,8 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         global prev_dir
         global check_count
         global level_number
+        global check_dodge
+
         # Receive information about static game properties
         await websocket.send(json.dumps({"cmd": "join", "name": agent_name}))
         msg = await websocket.recv()
@@ -41,7 +43,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         prev = []
         prev_dir = [(0,0),(0,0),(0,0),(0,0),(0,0),(0,0)]
         check_count = 0
-        
+        check_dodge = True
         while True:
             try:
                 state = json.loads(
@@ -49,6 +51,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
                 key = "" 
                 lvl = state["level"]
+
                 if(lvl != level_number):
                     k = 0
                     count = 0
@@ -56,8 +59,8 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     prev_dir = [(0,0),(0,0),(0,0),(0,0),(0,0),(0,0)]
                     check_count = 0
                     level_number = lvl
-                
                 player_pos = state["bomberman"]
+                player_pos = (player_pos[0],player_pos[1])
                 wall_list = state["walls"]
                 mapa._walls = wall_list
                 enemy_list = state["enemies"]
@@ -66,7 +69,6 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     danger_zone = get_enemyPos()
                 k+=1
                 dir_ballon(get_enemyPos())
-
 
                 if(wall_list != []):
                     nearest_wall = entity_finder(player_pos,wall_list)
@@ -112,6 +114,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
             except websockets.exceptions.ConnectionClosedOK:
                 print("Server has cleanly disconnected us")
                 return
+            
     
 
 def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
@@ -130,11 +133,6 @@ def entity_finder(minha_pos,obj_pos): # funçao para encontrar o objeto mais pro
 
 def distancia_calculation(coord1,coord2):
     return math.sqrt( ((coord1[0] - coord2[0])**2) +  ((coord1[1] - coord2[1])** 2))
-def even_number(number): 
-    if (number % 2 == 0):
-        return True
-    return False   
-
 
 class Node():
     """A node class for A* Pathfinding"""
@@ -160,9 +158,7 @@ def mover(player_pos, dst_pos):
     global enemy_list
     global danger_zone
     maze = mapa.map
-    if(player_pos[0] == dst_pos[0] and player_pos[1] == dst_pos[1]):
-        return []
-    # Create start and end node
+
     start_node = Node(None, player_pos)
     print(start_node)
     start_node.g = start_node.h = start_node.f = 0
@@ -194,7 +190,10 @@ def mover(player_pos, dst_pos):
         closed_list.append(current_node)
 
         # Found the goal
+        print("current: "+ str(current_node))
+        print("end: "+ str(end_node))
         if current_node == end_node:
+            
             path = []
             current = current_node
             while current is not None:
@@ -270,27 +269,21 @@ def coord2dir(lista):
     
 
 def go2wall(player_pos, wall ,mapa):
-    
+    print("wall->" + str(wall))
     step_pos = side_step(wall)
-    # if(player_pos[0] == step_pos[0] and player_pos[1] == step_pos[1]): # resolve o problema de mandar para ele proprio
-    #     return
-    #print("aqui")
+    print("step_pos_wall->" + str(step_pos))
     p = mover(player_pos, step_pos)
     coord2dir(p)
 
-def canDodge(pos, r):
-    global mapa
-    b = Bomb(pos, mapa, r)
-    if dodge2(pos,b,mapa) == False:
-        return False
-    else:
-        return True
 
 def dodge2(bomb_pos, bomb, mapa):
     global danger_zone
     global wall_list
+    global check_dodge 
+    check_dodge = True
     next_pos = queue.Queue(100)
     next_pos.put(bomb_pos)
+
     #print(bomb_pos)
     while(1):
         i = 0
@@ -301,7 +294,7 @@ def dodge2(bomb_pos, bomb, mapa):
                 i+=1
                 print(i)
                 if i == 4: #n tem hipoteses
-                    return False
+                    check_dodge = False
                 continue# n faz nada / salta a frente     
             else:
                 if(not bomb.in_range(new_pos)):
@@ -311,7 +304,7 @@ def dodge2(bomb_pos, bomb, mapa):
 
 def plant_bomb():
     global player_pos
-    if canDodge(player_pos,3):
+    if check_dodge:
         actions_in_queue.put("B")
         bomb = Bomb(player_pos, mapa, 3)
         p1 = dodge2(player_pos, bomb, mapa)
@@ -329,7 +322,7 @@ def side_step(pos):
     global danger_zone
     for x in [(0,1),(0,-1),(1,0),(-1,0)]:
         new_pos = (x[0] + pos[0], x[1] + pos[1])
-        if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or isObs(new_pos,get_enemyPos()) or isObs(new_pos,danger_zone)):
+        if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list)):
             continue
         else: return new_pos
 def isObs(pos, list): # itera a lista e ve se algum objeto interfere com a posição final
@@ -431,6 +424,7 @@ def calc_danger(enemy_pos,list_diretions):
     dir = []
     size = len(enemy_pos)
     danger_zone = danger_zone[:size]
+    print("LISTA DOS INMIGOS" + str(list_diretions))
     for cnt in range(size):
         if list_diretions[cnt] == (0,0):
             danger_zone[cnt] = danger_zone[cnt][0] + list_diretions[cnt][0], danger_zone[cnt][1] + list_diretions[cnt][1]
@@ -469,7 +463,8 @@ def in_danger(player_pos,key):
 def get_out():
     global player_pos
     actions_in_queue.queue.clear()
-    b = Bomb(player_pos,mapa,2)
+    plant_bomb()
+    b = Bomb(player_pos,mapa,3)
     p1 = dodge2(player_pos,b,mapa)
     m1 = mover(player_pos, p1)
     coord2dir(m1)
