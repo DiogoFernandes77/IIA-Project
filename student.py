@@ -28,7 +28,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         global check_count
         global level_number
         global check_dodge
-
+        global cnt
         # Receive information about static game properties
         await websocket.send(json.dumps({"cmd": "join", "name": agent_name}))
         msg = await websocket.recv()
@@ -44,14 +44,14 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         prev_dir = [(0,0),(0,0),(0,0),(0,0),(0,0),(0,0)]
         check_count = 0
         check_dodge = True
+        cnt  = 0
         while True:
             try:
                 state = json.loads(
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
-                key = "" 
                 lvl = state["level"]
-
+                print("level:" +str(lvl))
                 if(lvl != level_number):
                     k = 0
                     count = 0
@@ -59,25 +59,30 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     prev_dir = [(0,0),(0,0),(0,0),(0,0),(0,0),(0,0)]
                     check_count = 0
                     level_number = lvl
+
+                print(websocket.messages)
                 player_pos = state["bomberman"]
                 player_pos = (player_pos[0],player_pos[1])
                 wall_list = state["walls"]
                 mapa._walls = wall_list
                 enemy_list = state["enemies"]
                 exit = state["exit"]
+                
                 if k == 0:
                     danger_zone = get_enemyPos()
                 k+=1
-                dir_ballon(get_enemyPos())
+                dir_ballon(get_enemyPos()) # make danger zone
 
                 if(wall_list != []):
                     nearest_wall = entity_finder(player_pos,wall_list)
                 else:
                     nearest_wall = []
                 
-                
-                if(actions_in_queue.empty()):
-                    flag  = 0
+                if get_enemyName("Oneal") != []:
+                    nearest_oneal = entity_finder(player_pos, get_enemyName("Oneal"))
+                    print("nearest oneal"+ str(nearest_oneal))
+                    kill_Oneal(side_step(nearest_oneal), nearest_wall)
+                elif(actions_in_queue.empty()):
                     if exit != [] and len(enemy_list) == 0:# ir para a saida, se os monstros estiverem todos mortos
                             print("pppppppppppppppppppppppp")
                             saida = (exit[0],exit[1])
@@ -86,6 +91,9 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                         
                     else:
                         # ver como vamos chamar para matar o balao(ex qnd apanharmos um powerup ou quando tiver dentro do range)
+                        i = 0
+                        enemyPos = get_enemyPos
+
                         if(wall_list == []):
                             
                             m2 = mover(player_pos,(10,1))
@@ -190,8 +198,6 @@ def mover(player_pos, dst_pos):
         closed_list.append(current_node)
 
         # Found the goal
-        print("current: "+ str(current_node))
-        print("end: "+ str(end_node))
         if current_node == end_node:
             
             path = []
@@ -304,14 +310,14 @@ def dodge2(bomb_pos, bomb, mapa):
 
 def plant_bomb():
     global player_pos
-    if check_dodge:
-        actions_in_queue.put("B")
-        bomb = Bomb(player_pos, mapa, 3)
-        p1 = dodge2(player_pos, bomb, mapa)
-        m1 = mover(player_pos, p1)
-        coord2dir(m1)
-        wait(7)
-    else: wait(1)
+    # if check_dodge:
+    actions_in_queue.put("B")
+    bomb = Bomb(player_pos, mapa, 3)
+    p1 = dodge2(player_pos, bomb, mapa)
+    m1 = mover(player_pos, p1)
+    coord2dir(m1)
+    wait(7)
+    # else: wait(1)
  
 def wait(wait_time): #fazer w8 para time out da bomba
     for x in range(wait_time): # w8
@@ -347,14 +353,63 @@ def to_exit(player_pos, exit ,mapa): # ver dps
     path.append(exit)
     coord2dir(path)
 
-def kill_ballon(player_pos, b_pos): 
+def kill_Oneal(kill_pos, w): 
     global danger_zone
     global wall_list
     global mapa
+    global cnt
+    global player_pos
+    lst = []
+    print(actions_in_queue.empty())
+    l = actions_in_queue
+    value = l.get()
+    while value != "":
+        lst.append(value)
+        value = l.get()
+        
+    # if not lst.empty():
+    #     filter( lambda lst : lst.get() != "", lst)
+    #     print(lst)
+    if lst.empty():
+        cnt = 0
+        print("acabou o dodge")
+    if cnt == 0:
+        actions_in_queue.queue.clear()
+        if(mapa.is_blocked(kill_pos)):
+            p = mover(player_pos,side_step(kill_pos))
+            print("cnt:" + str((cnt)))
+            coord2dir(p)
+        else:
+            p = mover(player_pos,kill_pos)
+            print("cnt:" + str((cnt)))
+            coord2dir(p)
     
-    lista = mover(player_pos,(20,1))
-    coord2dir(lista)
+    else: pass
+    # i = get_Index(pos)
+    # print("i:" + str(i))
+    # print(danger_zone)
+    # t = (danger_zone[i][0] - pos[0], danger_zone[i][1] - pos[1]) # direçao
+
+    # print("dir:" +str(t))
+
+    # kill_pos = (danger_zone[i][0]+ 2*t[0], danger_zone[i][1] + 2*t[1]) #3 pos á frente, conforme a direção
+    # print(kill_pos)
     
+    if player_pos == kill_pos:
+        actions_in_queue.queue.clear()
+        cnt = 1
+        plant_bomb() #para matar
+        
+    print("player_pos" +str(player_pos))
+    print("w:" + str(w))
+    if near_wall(player_pos, w):
+        actions_in_queue.queue.clear()
+        print("aqui")
+        cnt = 1
+        plant_bomb()
+    
+    pass
+
 
 def dir_ballon(enemy_pos):
     global prev
@@ -424,7 +479,7 @@ def calc_danger(enemy_pos,list_diretions):
     dir = []
     size = len(enemy_pos)
     danger_zone = danger_zone[:size]
-    print("LISTA DOS INMIGOS" + str(list_diretions))
+    #print("LISTA DOS INMIGOS" + str(list_diretions))
     for cnt in range(size):
         if list_diretions[cnt] == (0,0):
             danger_zone[cnt] = danger_zone[cnt][0] + list_diretions[cnt][0], danger_zone[cnt][1] + list_diretions[cnt][1]
@@ -436,6 +491,7 @@ def calc_danger(enemy_pos,list_diretions):
     
     for i in range(size):
         danger_zone.append((danger_zone[i][0] - 2*dir[i][0], danger_zone[i][1] - 2*dir[i][1])) # 1 atrás
+        #danger_zone.append((danger_zone[i][0] - 3*dir[i][0], danger_zone[i][1] - 3*dir[i][1])) # 2 atrás
         danger_zone.append((danger_zone[i][0] + dir[i][0], danger_zone[i][1] + dir[i][1])) #adiciona 2 à frente
     #print(danger_zone)
 
@@ -469,6 +525,22 @@ def get_out():
     m1 = mover(player_pos, p1)
     coord2dir(m1)
     wait(1)
+
+def get_enemyName(name): #funçap que devolve posiçoes dos enimigos cm o nome passado como arg
+    global enemy_list
+    pos = []
+    for x in enemy_list:
+        if x["name"] == name:
+            pos.append(x["pos"])
+    return pos
+
+def get_Index(pos):
+    i = 0
+    lst = get_enemyPos()
+    for x in lst:
+        if x[0] == pos[0] and x[1] == pos[1]:
+            return i
+        i+=1
 # DO NOT CHANGE THE LINES BELLOW
 # You can change the default values using the command line, example:
 # $ NAME='bombastico' python3 client.py
