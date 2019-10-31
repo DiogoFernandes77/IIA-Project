@@ -87,8 +87,12 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if k == 0:
                     danger_zone = get_enemyPos()
                 k+=1
-                dir_ballon(get_enemyName("Balloom")) # make danger zone
-
+                if get_enemyName("Doll") == []:
+                    dir_ballon(get_enemyName("Balloom")) # make danger zone only balloom, lvl 1 and 2
+                else:
+                    lst1 = get_enemyName("Balloom")  # lvl 3
+                    lst2 = get_enemyName("Doll")
+                    dir_ballon(lst1 + lst2)
                 if(wall_list != []):
                     nearest_wall = entity_finder(player_pos,wall_list)
                 else:
@@ -98,16 +102,17 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     nearest_oneal = entity_finder(player_pos, get_enemyName("Oneal"))
                     kill(nearest_oneal, nearest_wall, "Oneal")
                 
-                elif get_enemyName("Balloom") != [] and lvl != 1:
-                    nearest_Ballom = entity_finder(player_pos, get_enemyName("Balloom"))
-                    kill(nearest_Ballom, nearest_wall,"Balloom")
+                # elif get_enemyName("Balloom") != [] and lvl != 1:
+                #     nearest_Ballom = entity_finder(player_pos, get_enemyName("Balloom"))
+                #     kill(nearest_Ballom, nearest_wall,"Balloom")
 
                 elif(actions_in_queue.empty()):
                     if exit != [] and len(enemy_list) == 0:# ir para a saida, se os monstros estiverem todos mortos
+                        if lvl == 1:
                             get_power()#para já chamo só aqui
-                            print("pppppppppppppppppppppppp")
-                            saida = (exit[0],exit[1])
-                            to_exit(player_pos, exit ,mapa)
+                        print("pppppppppppppppppppppppp")
+                        saida = (exit[0],exit[1])
+                        to_exit(player_pos, exit ,mapa)
                     
                         
                     else:
@@ -341,6 +346,7 @@ def dodge2(bomb_pos, bomb, mapa):
                 print(i)
                 if i == 4: #n tem hipoteses
                     check_dodge = False
+                    print("return")
                     return new_pos
                 continue# n faz nada / salta a frente     
             else:
@@ -569,7 +575,9 @@ def get_out():
     global player_pos
     global plant_finished
     if player_lives == lives: #se morrer, foi inevitável morrer
+        print("123")
         actions_in_queue.queue.clear()
+        print("1234")
         plant_bomb()
         b = Bomb(player_pos,mapa,3)
         p1 = dodge2(player_pos,b,mapa)
