@@ -409,8 +409,9 @@ def kill(pos, w, enemy):
     isNear = d == "1.0"
 
     if enemy == "Balloom":
-        range = 3
+        range = 4
 
+    print("range  "+ str(range))
     if plant_finished == 0:
         actions_in_queue.queue.clear()
         b = Bomb(pos,mapa,range)
@@ -558,7 +559,7 @@ def in_danger(player_pos,key):
     
     next_pos = (player_pos[0] + movement[0], player_pos[1] + movement[1])
     
-    if(isObs(next_pos,get_enemyPos()) or isObs(player_pos, danger_zone)):
+    if(isObs(next_pos,get_enemyPos()) or isObs(next_pos, danger_zone)):
         print("aquis")
         return True
 
