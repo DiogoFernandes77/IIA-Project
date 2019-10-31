@@ -57,6 +57,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
                 lvl = state["level"]
                 lives_count = state["lives"]
+                print(websocket.messages)
                 if(lvl != level_number or lives != lives_count): # caso mude de nivel ou morre tudo resetado
                     k = 0
                     count = 0
@@ -81,7 +82,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if k == 0:
                     danger_zone = get_enemyPos()
                 k+=1
-                dir_ballon(get_enemyPos()) # make danger zone
+                dir_ballon(get_enemyName("Balloom")) # make danger zone
 
                 if(wall_list != []):
                     nearest_wall = entity_finder(player_pos,wall_list)
@@ -92,6 +93,10 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     nearest_oneal = entity_finder(player_pos, get_enemyName("Oneal"))
                     print("nearest oneal"+ str(nearest_oneal))
                     kill_Oneal(nearest_oneal, nearest_wall)
+                
+                elif get_enemyName("Balloom") != [] and lvl != 1:
+                    nearest_Ballom = entity_finder(player_pos, get_enemyName("Balloom"))
+                    kill_Oneal(nearest_Ballom, nearest_wall)
 
                 elif(actions_in_queue.empty()):
                     if exit != [] and len(enemy_list) == 0:# ir para a saida, se os monstros estiverem todos mortos
@@ -118,7 +123,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                                 if near_wall(player_pos,nearest_wall):
                                     plant_bomb()
                                     plant_finished = 0
-                 
+                    
                 if(not actions_in_queue.empty()):
                     key = actions_in_queue.get()
                     print("poe key: " + key)
@@ -151,7 +156,7 @@ def get_power():
             coord2dir(mover(player_pos,pos))#para já só interessa o flames devido ao raio das bombas
 
 def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
-    if distancia_calculation(bomberman,next_move) == 1:
+    if distancia_calculation(bomberman,next_move) == "1.0":
         return True
     return False
 
@@ -162,6 +167,7 @@ def entity_finder(minha_pos,obj_pos): # funçao para encontrar o objeto mais pro
         if(distancia_tmp < distancia):
             distancia = distancia_tmp
             next_wall = pos
+    print("distancia:" +str (distancia))
     return next_wall
 
 def distancia_calculation(coord1,coord2):
@@ -288,7 +294,7 @@ def coord2dir(lista):
         x = elem[0] - anterior[0]
         y = elem[1] - anterior[1]
         if isObs(elem, wall_list): # se mandar p uma parede
-            return
+            return "parede"
         anterior = elem
         res = x,y
         if(res == (0,1)):
@@ -394,7 +400,10 @@ def kill_Oneal(pos, w):
     global mapa
     global plant_finished
     global player_pos
-    
+    d = distancia_calculation(player_pos,w)
+    print("DISTANCIA È:" + str(d))
+    isNear = d == "1.0"
+
     if plant_finished == 0:
         actions_in_queue.queue.clear()
         b = Bomb(pos,mapa,1)
@@ -407,13 +416,14 @@ def kill_Oneal(pos, w):
             plant_bomb() #para matar
         
         print("w:" + str(w))
-        
+        print("player_pos " + str(player_pos))
+        print("isNear:" + str(near_wall(player_pos,w)))
         if len(p) >= 2:
             if p[1] == (w[0], w[1]):
                 print("movimento 1 da kill oneal" + str(p[1]))
                 plant_bomb()
 
-        elif near_wall(player_pos,w): #tentativa de resolver bug de quando fica parado a beira de 2 parede destruitiveis
+        elif isNear: #tentativa de resolver bug de quando fica parado a beira de 2 parede destruitiveis
             print("tem de plantar")
             plant_bomb()
 
@@ -512,11 +522,11 @@ def calc_danger(enemy_pos,list_diretions):
             dir.append((danger_zone[i][0] - enemy_pos[i][0], danger_zone[i][1] - enemy_pos[i][1]))
         
         for i in range(size):
-            danger_zone.append((danger_zone[i][0] - 2*dir[i][0], danger_zone[i][1] - 2*dir[i][1])) 
-            danger_zone.append((danger_zone[i][0] - 3*dir[i][0], danger_zone[i][1] - 3*dir[i][1])) 
-            danger_zone.append((danger_zone[i][0] + dir[i][0], danger_zone[i][1] + dir[i][1])) 
+            danger_zone.append((danger_zone[i][0] - 2*dir[i][0], danger_zone[i][1] - 2*dir[i][1])) # 1 atras
+           # danger_zone.append((danger_zone[i][0] - 3*dir[i][0], danger_zone[i][1] - 3*dir[i][1])) 
+            danger_zone.append((danger_zone[i][0] + dir[i][0], danger_zone[i][1] + dir[i][1])) # 2 a frente  
     except IndexError:
-        danger_zone = get_enemyPos()
+        danger_zone = danger_zone
         print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
         print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
         print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
