@@ -7,8 +7,10 @@ import os
 import math
 import queue
 import time
+import random
 from mapa import Map
 from game import Bomb
+
 
 
 actions_in_queue = queue.Queue(100)
@@ -92,11 +94,11 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if get_enemyName("Oneal") != []:
                     nearest_oneal = entity_finder(player_pos, get_enemyName("Oneal"))
                     print("nearest oneal"+ str(nearest_oneal))
-                    kill_Oneal(nearest_oneal, nearest_wall)
+                    kill(nearest_oneal, nearest_wall, "Oneal")
                 
                 elif get_enemyName("Balloom") != [] and lvl != 1:
                     nearest_Ballom = entity_finder(player_pos, get_enemyName("Balloom"))
-                    kill_Oneal(nearest_Ballom, nearest_wall)
+                    kill(nearest_Ballom, nearest_wall,"Balloom")
 
                 elif(actions_in_queue.empty()):
                     if exit != [] and len(enemy_list) == 0:# ir para a saida, se os monstros estiverem todos mortos
@@ -349,10 +351,11 @@ def can_dodge():
 def plant_bomb():
     global player_pos
     global plant_finished
+    global bomb_radius
     plant_finished = 0
     if check_dodge:
         actions_in_queue.put("B")
-        bomb = Bomb(player_pos, mapa, 3)
+        bomb = Bomb(player_pos, mapa, bomb_radius)
         p1 = dodge2(player_pos, bomb, mapa)
         m1 = mover(player_pos, p1)
         coord2dir(m1)
@@ -394,19 +397,23 @@ def to_exit(player_pos, exit ,mapa): # ver dps
     path.append(exit)
     coord2dir(path)
 
-def kill_Oneal(pos, w): 
+def kill(pos, w, enemy): 
     global danger_zone
     global wall_list
     global mapa
     global plant_finished
     global player_pos
     d = distancia_calculation(player_pos,w)
+    range = 1
     print("DISTANCIA È:" + str(d))
     isNear = d == "1.0"
 
+    if enemy == "Balloom":
+        range = 3
+
     if plant_finished == 0:
         actions_in_queue.queue.clear()
-        b = Bomb(pos,mapa,1)
+        b = Bomb(pos,mapa,range)
         kill_pos = in_range(pos,b)
         p = mover(player_pos, kill_pos)
         #print(p)
@@ -417,7 +424,7 @@ def kill_Oneal(pos, w):
         
         print("w:" + str(w))
         print("player_pos " + str(player_pos))
-        print("isNear:" + str(near_wall(player_pos,w)))
+        print("isNear:" + str(isNear))
         if len(p) >= 2:
             if p[1] == (w[0], w[1]):
                 print("movimento 1 da kill oneal" + str(p[1]))
@@ -551,7 +558,7 @@ def in_danger(player_pos,key):
     
     next_pos = (player_pos[0] + movement[0], player_pos[1] + movement[1])
     
-    if(isObs(next_pos,get_enemyPos()) or isObs(next_pos, danger_zone)):
+    if(isObs(next_pos,get_enemyPos()) or isObs(player_pos, danger_zone)):
         print("aquis")
         return True
 
@@ -588,6 +595,7 @@ def in_range(enemy, bomb):
     global wall_list
     global check_dodge 
     check_dodge = True
+    lst = []
     next_pos = queue.Queue(100)
     next_pos.put(enemy)
 
@@ -595,9 +603,9 @@ def in_range(enemy, bomb):
     while(1):
         i = 0
         p1 = next_pos.get()
-        lst = [(0,1),(0,-1),(1,0),(-1,0)]
-        lst = sorted(lst) #para variar,oneal
-        for pos in  lst:
+        lst = [(0,1),(0,-1),(1,0),(-1,0)] # para variar
+        random.shuffle(lst)
+        for pos in lst:
             new_pos = (p1[0] + pos[0], p1[1] + pos[1])
             if(mapa.is_blocked(new_pos) or isObs(new_pos,get_enemyPos())):
                 continue# n faz nada / salta a frente     
