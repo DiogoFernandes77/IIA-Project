@@ -341,7 +341,7 @@ def dodge2(bomb_pos, bomb, mapa):
                 print(i)
                 if i == 4: #n tem hipoteses
                     check_dodge = False
-                    continue
+                    return new_pos
                 continue# n faz nada / salta a frente     
             else:
                 if(not bomb.in_range(new_pos)):
