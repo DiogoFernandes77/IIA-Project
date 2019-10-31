@@ -348,14 +348,13 @@ def dodge2(bomb_pos, bomb, mapa):
                     check_dodge = False
                     print("return")
                     return new_pos
+                    print("dps return")
                 continue# n faz nada / salta a frente     
             else:
                 if(not bomb.in_range(new_pos)):
                     #print(new_pos)
                     return new_pos
                 next_pos.put(new_pos)
-def can_dodge():
-    return dodge2
 
 def plant_bomb():
     global player_pos
@@ -579,10 +578,6 @@ def get_out():
         actions_in_queue.queue.clear()
         print("1234")
         plant_bomb()
-        b = Bomb(player_pos,mapa,3)
-        p1 = dodge2(player_pos,b,mapa)
-        m1 = mover(player_pos, p1)
-        coord2dir(m1)
         wait(1)
         plant_finished = 0
     else: return
