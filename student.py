@@ -138,7 +138,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
 
                         if(wall_list == []):
                             
-                            m2 = mover(player_pos,(8,1))
+                            m2 = mover(player_pos,(1,1))
                             coord2dir(m2)
                             
                         else:
