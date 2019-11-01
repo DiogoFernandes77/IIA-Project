@@ -125,8 +125,8 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     if exit != [] and len(enemy_list) == 0:# ir para a saida, se os monstros estiverem todos mortos
                         if lvl == 1:
                             get_power()#para já chamo só aqui
-                        print("pppppppppppppppppppppppp")
-                        print("aquiiii")
+                        # print("pppppppppppppppppppppppp")
+                        # print("aquiiii")
                         saida = (exit[0],exit[1])
                         to_exit(player_pos, exit ,mapa)
                         
@@ -134,7 +134,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     else:
                         # ver como vamos chamar para matar o balao(ex qnd apanharmos um powerup ou quando tiver dentro do range)
                         
-                        enemyPos = get_enemyPos
+                        enemyPos = get_enemyPos()
 
                         if(wall_list == []):
                             
@@ -304,7 +304,7 @@ def mover(player_pos, dst_pos):
             try:
                 child.h = ((child.position[0] - end_node.position[0]) ** 2) + ((child.position[1] - end_node.position[1]) ** 2)
             except TypeError:
-                print("Erro de tipo no mover linha 314: ")
+                #print("Erro de tipo no mover linha 314: ")
                 child.h = 1000 # valor alto para sair
 
 
@@ -374,7 +374,7 @@ def dodge2(bomb_pos, bomb, mapa):
             new_pos = (p1[0] + pos[0], p1[1] + pos[1])
             if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or isObs(new_pos,get_enemyPos()) or isObs(new_pos, danger_zone)):
                 i+=1
-                print(i)
+                #print(i)
                 if i == 4: #n tem hipoteses
                     check_dodge = False
                     return new_pos
@@ -432,9 +432,9 @@ def get_enemyPos():
     return pos
 
 def to_exit(player_pos, exit ,mapa): # ver dps
-    print("Print exit" + str(exit))
+    #print("Print exit" + str(exit))
     step_pos = side_step(exit)
-    print("Exit com step_pos"+str(step_pos))
+    #print("Exit com step_pos"+str(step_pos))
     path = mover(player_pos, step_pos)
     path.append(exit)
     coord2dir(path)
@@ -452,7 +452,7 @@ def kill(pos, w, enemy):
     if enemy == "Balloom":
         alcance = 6
 
-    print("range  "+ str(alcance))
+    #print("range  "+ str(alcance))
     if plant_finished == 0:
         actions_in_queue.queue.clear()
         b = Bomb(pos,mapa,alcance)
@@ -506,7 +506,7 @@ def dir_ballon(enemy_pos):
    # print("prev ->"+ str(prev))
     #print("enemy_pos->" + str(enemy_pos))
     for index in range(len(enemy_pos)):
-        print(1)
+        #print(1)
         c1 = enemy_pos[index][0]-prev[index][0]
         c2 = enemy_pos[index][1]-prev[index][1]
 
@@ -556,7 +556,7 @@ def calc_danger(enemy_pos,list_diretions): # para balloom e Doll
     last_dir = []
     size = len(enemy_pos) # so os ballooms tem danger_zone
     danger_zone = danger_zone[:size]
-    print("LISTA DOS INMIGOS" + str(list_diretions))
+    #print("LISTA DOS INMIGOS" + str(list_diretions))
     try:
         for cnt in range(size):
             # dir = (danger_zone[cnt][0] - enemy_pos[cnt][0], danger_zone[cnt][1] - enemy_pos[cnt][1])
@@ -573,7 +573,7 @@ def calc_danger(enemy_pos,list_diretions): # para balloom e Doll
             else:
                 dir = last_dir
             if not isOneal(enemy_pos[i]): # se n for oneal
-                print("n é oneal")
+                #print("n é oneal")
                 danger_zone.append((danger_zone[i][0] - 2*dir[0], danger_zone[i][1] - 2*dir[1])) # 1 atras
                 danger_zone.append((danger_zone[i][0] + 2*dir[0], danger_zone[i][1] + 2*dir[1])) # 3 a frenteS
                 #danger_zone.append((danger_zone[i][0] + 3*list_diretions[i][0], danger_zone[i][1] + 3*list_diretions[i][1])) # 4 a frenteS
@@ -582,12 +582,12 @@ def calc_danger(enemy_pos,list_diretions): # para balloom e Doll
         
     except IndexError:
         danger_zone = prev_danger
-        print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
-        print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
-        print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
-        print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
-    print(enemy_pos)
-    print("danger zone ->"+ str(danger_zone))
+        # print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
+        # print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
+        # print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
+        # print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
+    # print(enemy_pos)
+    # print("danger zone ->"+ str(danger_zone))
 
 def in_danger(player_pos,key):
     global mapa
@@ -608,7 +608,7 @@ def in_danger(player_pos,key):
     next_pos = (player_pos[0] + movement[0], player_pos[1] + movement[1])
     
     if(isObs(next_pos,get_enemyPos()) or isObs(next_pos, danger_zone)):
-        print("aquis")
+        #print("aquis")
         danger_zone = prev_danger
         return True
 
@@ -618,9 +618,9 @@ def get_out():
     global player_pos
     global plant_finished
     # if player_lives == lives: #se morrer, foi inevitável morrer
-    print("123")
+    #print("123")
     actions_in_queue.queue.clear()
-    print("1234")
+    #print("1234")
     plant_bomb()
     wait(1)
     plant_finished = 0
