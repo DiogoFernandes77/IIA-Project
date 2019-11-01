@@ -35,6 +35,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         global bomb_radius
         global lives
         global player_lives
+        global bombs_count
         # Receive information about static game properties
         await websocket.send(json.dumps({"cmd": "join", "name": agent_name}))
         msg = await websocket.recv()
@@ -42,7 +43,8 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
 
         # You can create your own map representation or use the game representation:
         mapa = Map(size=game_properties["size"], mapa=game_properties["map"])
-        bomb_radius = 3
+        bombs_count = 1 #nº de bombas
+        bomb_radius = 3 #para o power up
         danger_zone = []
         level_number = 1
         k = 0
@@ -61,7 +63,6 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
                 lvl = state["level"]
                 lives_count = state["lives"]
-                print(websocket.messages)
                 if(lvl != level_number or lives != lives_count): # caso mude de nivel ou morre tudo resetado
                     k = 0
                     count = 0
@@ -132,7 +133,8 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                                 if near_wall(player_pos,nearest_wall):
                                     plant_bomb()
                                     plant_finished = 0
-                    
+               
+                
                 if(not actions_in_queue.empty()):
                     key = actions_in_queue.get()
                     
@@ -142,7 +144,10 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if in_danger(player_pos,key):
                     get_out()
                     key = actions_in_queue.get()
-
+                
+                
+                
+                
                 await websocket.send(
                             json.dumps({"cmd": "key", "key": key})
                         )  # send key command to server - you must implement this send in the AI agent
@@ -155,9 +160,14 @@ def get_power():
     global droped_powerups
     global bomb_radius
     global player_pos
+    global bombs_count
     for pos,poder in droped_powerups:
         if(poder == "Flames"):
             bomb_radius += 1
+            pos = (pos[0], pos[1]) # conversao [] -> ()
+            coord2dir(mover(player_pos,pos))
+        if(poder == "Bombs"):
+            bombs_count += 1
             pos = (pos[0], pos[1]) # conversao [] -> ()
             coord2dir(mover(player_pos,pos))
         else:
@@ -412,17 +422,17 @@ def kill(pos, w, enemy):
     global plant_finished
     global player_pos
     d = distancia_calculation(player_pos,w)
-    range = 1
+    alcance = 1
     print("DISTANCIA È:" + str(d))
     isNear = d == 1
 
     if enemy == "Balloom":
-        range = 6
+        alcance = 6
 
-    print("range  "+ str(range))
+    print("range  "+ str(alcance))
     if plant_finished == 0:
         actions_in_queue.queue.clear()
-        b = Bomb(pos,mapa,range)
+        b = Bomb(pos,mapa,alcance)
         kill_pos = in_range(pos,b)
         p = mover(player_pos, kill_pos)
         #print(p)
