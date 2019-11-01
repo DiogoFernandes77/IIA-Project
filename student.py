@@ -106,8 +106,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     enemy_pos = get_enemyPos()
                     dir = dir_ballon(enemy_pos)
                     calc_danger(enemy_pos,dir)
-                
-                
+                 
                 if(wall_list != []):
                     nearest_wall = entity_finder(player_pos,wall_list)
                 else:
@@ -191,7 +190,6 @@ def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
     return False
 
 def entity_finder(minha_pos,obj_pos): # funçao para encontrar o objeto mais proximo
-    next_wall = []
     distancia= 1000 # valor alto so para fa step_pos = side_step(nearest_wall)
     for pos in obj_pos:
         distancia_tmp = distancia_calculation(minha_pos,pos)
@@ -305,7 +303,7 @@ def mover(player_pos, dst_pos):
                 child.h = ((child.position[0] - end_node.position[0]) ** 2) + ((child.position[1] - end_node.position[1]) ** 2)
             except TypeError:
                 #print("Erro de tipo no mover linha 314: ")
-                child.h = 1000 # valor alto para sair
+                child.h = 0 # valor alto para sair
 
 
             child.f = child.g + child.h
@@ -433,9 +431,12 @@ def get_enemyPos():
 
 def to_exit(player_pos, exit ,mapa): # ver dps
     #print("Print exit" + str(exit))
+    ss = side_step(player_pos)
+    p = mover(player_pos,ss)
+    coord2dir(p)
     step_pos = side_step(exit)
     #print("Exit com step_pos"+str(step_pos))
-    path = mover(player_pos, step_pos)
+    path = mover(ss, step_pos)
     path.append(exit)
     coord2dir(path)
 
