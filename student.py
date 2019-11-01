@@ -121,9 +121,10 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 #     kill(nearest_Ballom, nearest_wall,"Balloom")
 
                 elif(actions_in_queue.empty()):
+                    if lvl != [] and lvl == 1: 
+                        get_power()
                     if exit != [] and len(enemy_list) == 0:# ir para a saida, se os monstros estiverem todos mortos
-                        if lvl == 1:
-                            get_power()#para já chamo só aqui
+                        
                         # print("pppppppppppppppppppppppp")
                         # print("aquiiii")
                         saida = (exit[0],exit[1])
@@ -430,6 +431,7 @@ def get_enemyPos():
     return pos
 
 def to_exit(player_pos, exit ,mapa): # ver dps
+    actions_in_queue.queue.clear()
     #print("Print exit" + str(exit))
     ss = side_step(player_pos)
     p = mover(player_pos,ss)
