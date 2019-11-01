@@ -86,28 +86,24 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 droped_powerups = state["powerups"]
                 player_lives = state["lives"]
                 bombs  = state["bombs"]
-                print("bombs: "+str(bombs))
-                if bombs != []:
-
-                    print("pos bomb:" + str(bombs[0][0]))
-                #print("plat_finished:" + str(plant_finished))
-                
-                
+            
                 if k == 0:
                     danger_zone = get_enemyPos()
                 k+=1
+                if k == 1000: # para nao sobrecarregar
+                    k = 2
 
                 prev_danger = danger_zone
-                print("prev danger ->"+ str(prev_danger))
 
                 if get_enemyName("Doll") == []:
                     enemy_pos = get_enemyName("Balloom")
                     dir = dir_ballon(enemy_pos) # make danger zone only balloom, lvl 1 and 2
                     calc_danger(enemy_pos,dir)
                 else:
-                    lst1 = get_enemyName("Balloom")  # lvl 3
-                    lst2 = get_enemyName("Doll")
-                    enemy_pos = lst1 + lst2
+                    # lst1 = get_enemyName("Balloom")  # lvl 3
+                    # lst2 = get_enemyName("Doll")
+                    # enemy_pos = lst1 + lst2
+                    enemy_pos = get_enemyPos()
                     dir = dir_ballon(enemy_pos)
                     calc_danger(enemy_pos,dir)
                 
@@ -163,9 +159,6 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if in_danger(player_pos,key):
                     get_out()
                     key = actions_in_queue.get()
-                
-                
-                
                 
                 await websocket.send(
                             json.dumps({"cmd": "key", "key": key})
@@ -493,8 +486,6 @@ def kill(pos, w, enemy):
     # kill_pos = (danger_zone[i][0]+ 2*t[0], danger_zone[i][1] + 2*t[1]) #3 pos á frente, conforme a direção
     # print(kill_pos)
     
-    
-
 def dir_ballon(enemy_pos):
     global prev
     global count
@@ -515,7 +506,7 @@ def dir_ballon(enemy_pos):
    # print("prev ->"+ str(prev))
     #print("enemy_pos->" + str(enemy_pos))
     for index in range(len(enemy_pos)):
-        
+        print(1)
         c1 = enemy_pos[index][0]-prev[index][0]
         c2 = enemy_pos[index][1]-prev[index][1]
 
@@ -565,14 +556,14 @@ def calc_danger(enemy_pos,list_diretions): # para balloom e Doll
     last_dir = []
     size = len(enemy_pos) # so os ballooms tem danger_zone
     danger_zone = danger_zone[:size]
-    #print("LISTA DOS INMIGOS" + str(list_diretions))
+    print("LISTA DOS INMIGOS" + str(list_diretions))
     try:
         for cnt in range(size):
             # dir = (danger_zone[cnt][0] - enemy_pos[cnt][0], danger_zone[cnt][1] - enemy_pos[cnt][1])
             # print("dir"+str(dir))
             if list_diretions[cnt] == (0,0):
                 danger_zone[cnt] = danger_zone[cnt][0] + list_diretions[cnt][0], danger_zone[cnt][1] + list_diretions[cnt][1]
-            else: 
+            else:
                 danger_zone[cnt] = enemy_pos[cnt][0] + list_diretions[cnt][0], enemy_pos[cnt][1] + list_diretions[cnt][1]
         
         for i in range(size):
@@ -581,16 +572,16 @@ def calc_danger(enemy_pos,list_diretions): # para balloom e Doll
                 last_dir = dir
             else:
                 dir = last_dir
-            print("dir"+str(dir))
-            danger_zone.append((danger_zone[i][0] - 2*dir[0], danger_zone[i][1] - 2*dir[1])) # 1 atras
-            danger_zone.append((danger_zone[i][0] + 2*dir[0], danger_zone[i][1] + 2*dir[1])) # 3 a frenteS
-            #danger_zone.append((danger_zone[i][0] + 3*list_diretions[i][0], danger_zone[i][1] + 3*list_diretions[i][1])) # 4 a frenteS
-            #danger_zone.append((danger_zone[i][0] + 4*dir[i][0], danger_zone[i][1] + 4*dir[i][1])) # 5 a frenteS
-            danger_zone.append((danger_zone[i][0] + dir[0], danger_zone[i][1] + dir[1])) # 2 a frente  
-        if len(danger_zone) == len(enemy_pos) and enemy_pos != []:
-            danger_zone = prev_danger
+            if not isOneal(enemy_pos[i]): # se n for oneal
+                print("n é oneal")
+                danger_zone.append((danger_zone[i][0] - 2*dir[0], danger_zone[i][1] - 2*dir[1])) # 1 atras
+                danger_zone.append((danger_zone[i][0] + 2*dir[0], danger_zone[i][1] + 2*dir[1])) # 3 a frenteS
+                #danger_zone.append((danger_zone[i][0] + 3*list_diretions[i][0], danger_zone[i][1] + 3*list_diretions[i][1])) # 4 a frenteS
+                #danger_zone.append((danger_zone[i][0] + 4*dir[i][0], danger_zone[i][1] + 4*dir[i][1])) # 5 a frenteS
+                danger_zone.append((danger_zone[i][0] + dir[0], danger_zone[i][1] + dir[1])) # 2 a frente  
+        
     except IndexError:
-        list_diretions = dir_ballon(enemy_pos)
+        danger_zone = prev_danger
         print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
         print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
         print("----------------HOUVE ERRO DE INDEX NA DANGER_ZONE------------------")
@@ -676,10 +667,13 @@ def in_range(enemy, bomb):
                     return new_pos
                 next_pos.put(new_pos)
 
-def get_Bomb(name):
-    global bombs 
-    for b in bombs:
-       return b[name] 
+def isOneal(pos):
+    list_pos = get_enemyName("Oneal")
+    for p in list_pos:
+        if p == pos:
+            return True
+    return False
+
 # DO NOT CHANGE THE LINES BELLOW
 # You can change the default values using the command line, example:
 # $ NAME='bombastico' python3 client.py
