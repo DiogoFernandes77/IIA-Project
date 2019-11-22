@@ -67,7 +67,10 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
                 lvl = state["level"]
                 lives_count = state["lives"]
-                if(lvl != level_number or lives != lives_count): # caso mude de nivel ou morre tudo resetado
+                print(lives_count)
+                
+                if(lvl != level_number or lives_count != lives): # caso mude de nivel ou morre tudo resetado
+                    print("mudou de nivel")
                     k = 0
                     count = 0
                     prev = []
@@ -77,6 +80,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     lives = lives_count
                     actions_in_queue.queue.clear()
                     danger_zone = []
+                    safe = True
                 
                 player_pos = state["bomberman"]
                 player_pos = (player_pos[0],player_pos[1])
@@ -125,14 +129,15 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                         coord2dir(m1)
                         if not b.in_range(player_pos): 
                             safe = True
-                
+
+                if detonador:
+                    kill(nearest_enemy, nearest_wall) 
+
                 if bombs == []:
                     actions_in_queue.queue.clear()
-                    if detonador:
-                        kill(nearest_enemy, nearest_wall) 
                     if droped_powerups != []:
                         get_power()
-
+                    
                     else:
                         if get_enemyName("Oneal") != [] and not detonador:
                             nearest_oneal = entity_finder(player_pos, get_enemyName("Oneal"))
@@ -194,15 +199,13 @@ def get_power():
     for pos,poder in droped_powerups:
         if(poder == "Flames"):
             bomb_radius += 1
-            pos = (pos[0], pos[1]) # conversao [] -> ()
-            coord2dir(mover(player_pos,pos))
+            
         if(poder == "Detonator"):
             print("tnttt")
             detonador = True
-            pos = (pos[0], pos[1]) # conversao [] -> ()
-            coord2dir(mover(player_pos,pos))
-        else:
-            return
+        
+        pos = (pos[0], pos[1]) # conversao [] -> ()
+        coord2dir(mover(player_pos,pos))
 
 def near_wall(bomberman,next_move): # diz se o playes esta colado a uma parede
     if distancia_calculation(bomberman,next_move) == 1:
@@ -238,26 +241,36 @@ class Node():
 
     def __eq__(self, other):
         return self.position == other.position
-
+def return_path(current_node):
+    path = []
+    current = current_node
+    while current is not None:
+        path.append(current.position)
+        current = current.parent
+    return path[::-1]  # Return reversed path
 
 def mover(player_pos, dst_pos): 
     """Returns a list of tuples as a path from the given start to the given end in the given maze"""
     print("m")
     print(dst_pos)
-    actions_in_queue.queue.clear()
     global mapa
     global enemy_list
     global danger_zone
     global wall_list
     global nearest_enemy
+    global bombs
     maze = mapa.map
-    
+
     start_node = Node(None, player_pos)
     #print(start_node)
     start_node.g = start_node.h = start_node.f = 0
     end_node = Node(None, dst_pos)
     #print(end_node)
     end_node.g = end_node.h = end_node.f = 0
+
+    # Adding a stop condition
+    outer_iterations = 0
+    max_iterations = (len(maze) // 4) ** 2
 
     # Initialize both open and closed list
     open_list = []
@@ -268,9 +281,13 @@ def mover(player_pos, dst_pos):
 
     # Loop until you find the end
     while len(open_list) > 0:
-
+        outer_iterations += 1
         # Get the current node
         current_node = open_list[0]
+        if outer_iterations > max_iterations:
+            # if we hit this point return the path such as it is
+            # it will not contain the destination
+            return [player_pos, side_step(player_pos)]
         #print(current_node)
         current_index = 0
         for index, item in enumerate(open_list):
@@ -284,11 +301,10 @@ def mover(player_pos, dst_pos):
 
         # Found the goal
         if current_node == end_node:
-            
+            print("objetivo")
             path = []
             current = current_node
             while current is not None:
-
                 path.append(current.position)
                 current = current.parent
             return path[::-1] # Return reversed path
@@ -296,20 +312,23 @@ def mover(player_pos, dst_pos):
         # Generate children
         children = []
         for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0)]: # Adjacent squares adsw
-
+            
             # Get node positionnew_pos: tuple
             node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
 
-            # Make sure within range
+            #Make sure within range
             if node_position[0] > (len(maze) - 1) or node_position[0] < 0 or node_position[1] > (len(maze[len(maze)-1]) -1) or node_position[1] < 0:
                 continue
-            
-            # Make sure walkable terrain
-            if mapa.is_blocked((node_position[0],node_position[1]) or isObs(node_position,wall_list)): #maze[node_position[0]][node_position[1]] != 0:
-                if nearest_enemy != [] and distancia_calculation(node_position,nearest_enemy) < 3:
-                    if isObs(node_position,danger_zone) or isObs(node_position, get_enemyPos()):
-                        continue 
+            if Node(current_node, node_position) in closed_list:
                 continue
+            # Make sure walkable terrain
+            if bombs != []:
+                for x in bombs: 
+                    if x[0][0] == node_position[0] and x[0][1] == node_position[1]:
+                        continue
+            if mapa.is_blocked((node_position[0],node_position[1])) or isObs(node_position, get_enemyPos()):
+                continue
+          
             # Create new node
             # print("node"+str(node_position))
             new_node = Node(current_node, node_position)
@@ -323,27 +342,24 @@ def mover(player_pos, dst_pos):
             # Child is on the closed list
             for closed_child in closed_list:
                 if child == closed_child:
-                    continue
-
+                    break
+            
             # Create the f, g, and h values
             child.g = current_node.g + 1
-            try:
-                child.h = ((child.position[0] - end_node.position[0]) ** 2) + ((child.position[1] - end_node.position[1]) ** 2)
-            except TypeError:
-                #print("Erro de tipo no mover linha 314: ")
-                child.h = 0 # valor alto para sair
-
-
+        
+            child.h = ((child.position[0] - end_node.position[0]) ** 2) + ((child.position[1] - end_node.position[1]) ** 2)
+        
             child.f = child.g + child.h
 
             # Child is already in the open list
             for open_node in open_list:
-                if child == open_node and child.g > open_node.g:
-                    continue
+                if child == open_node and child.g >= open_node.g:
+                    break
 
             # Add the child to the open list
             #print(child)
             open_list.append(child) 
+    return []
 
 def coord2dir(lista):
     global wall_list
@@ -387,6 +403,7 @@ def dodge2(bomb_pos, bomb, mapa):
     global danger_zone
     global wall_list
     global check_dodge 
+    bomb_pos = (bomb_pos[0],bomb_pos[1])
     check_dodge = True
     next_pos = queue.Queue(100)
     next_pos.put(bomb_pos)
@@ -398,7 +415,8 @@ def dodge2(bomb_pos, bomb, mapa):
         lst = [(0,1),(0,-1),(1,0),(-1,0)]
         for pos in lst:
             new_pos = (p1[0] + pos[0], p1[1] + pos[1])
-            if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or isObs(new_pos,get_enemyPos()) or isObs(new_pos, danger_zone)):
+            #print(new_pos)
+            if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or isObs(new_pos,get_enemyPos()) or isObs(new_pos, danger_zone) or new_pos == bomb_pos):
                 i+=1
                 #print(i)
                 if i == 4: #n tem hipoteses
@@ -443,12 +461,15 @@ def side_step(pos):
     global wall_list
     global danger_zone
     global player_pos
-
+    
+    lst = []
     for x in [(0,1),(1,0),(0,-1),(-1,0)]:
         new_pos = (x[0] + pos[0], x[1] + pos[1])
-        if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or not can_side_step(new_pos)):
+        if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or not can_side_step(new_pos) or isObs(new_pos,get_enemyPos())):
             continue
-        return new_pos
+        lst.append(new_pos)
+    
+    return entity_finder(player_pos, lst) # para ir para o side_step mais perto
         
 def can_side_step(pos):
     for x in [(0,1),(1,0),(0,-1),(-1,0)]:
