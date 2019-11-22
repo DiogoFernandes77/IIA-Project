@@ -436,25 +436,12 @@ def plant_bomb():
     global bomb_radius
     global safe
 
+    bomb = Bomb(player_pos, mapa, bomb_radius) #verifica primeiro
+    p1 = dodge2(player_pos, bomb, mapa)
     if check_dodge:
         actions_in_queue.put("B")
         safe = False
-
     else: wait(1)
-    # if bomb_radius == 3:
-    #     w8_time = 7
-    # else: w8_time = 8
-
-    # plant_finished = 0
-    # bomb = Bomb(player_pos, mapa, bomb_radius) #verifica primeiro
-    # p1 = dodge2(player_pos, bomb, mapa)
-    # if check_dodge:
-    #     actions_in_queue.put("B")
-    #     m1 = mover(player_pos, p1)
-    #     coord2dir(m1)
-    #     wait(w8_time)
-    #     plant_finished = w8_time + 1 + len(m1)
-    # else: wait(1)
  
 def wait(wait_time): #fazer w8 para time out da bomba
     for x in range(wait_time): # w8
@@ -669,8 +656,9 @@ def in_danger(player_pos,key):
         movement = (1,0)
     
     next_pos = (player_pos[0] + movement[0], player_pos[1] + movement[1])
+    next_pos1 = (player_pos[0] + 2 * movement[0], player_pos[1] + 2 * movement[1]) # danger_zone n funciona bem, soluçao
     
-    if(isObs(next_pos,get_enemyPos()) or isObs(next_pos, danger_zone)):
+    if(isObs(next_pos,get_enemyPos()) or isObs(next_pos, danger_zone) or isObs(next_pos1,get_enemyPos())):
         #print("aquis")
         danger_zone = prev_danger
         return True
