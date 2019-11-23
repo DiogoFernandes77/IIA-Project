@@ -67,6 +67,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
                 lvl = state["level"]
                 lives_count = state["lives"]
+                if lvl >= 4: detonador = True
                 
                 if(lvl != level_number or lives_count != lives): # caso mude de nivel ou morre tudo resetado
                     print("mudou de nivel")
@@ -134,13 +135,13 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                                 actions_in_queue.put("A") # detonar
                 
                 if bombs == []: 
-                    if droped_powerups != []:
+                    if droped_powerups != [] and lvl != 2 and lvl !=5: #powerup do 2 n interessa para ja
                         actions_in_queue.queue.clear()
                         get_power()
                     elif detonador and enemy_list != []: #ja apanhou o detonador
                         kill(nearest_enemy, nearest_wall)
                     else:
-                        if get_enemyName("Oneal") != [] and not detonador:
+                        if get_enemyName("Oneal") != [] and not detonador and lvl < 3: # a partir do nivel 3 vai buscar 1º o power up
                             nearest_oneal = entity_finder(player_pos, get_enemyName("Oneal"))
                             kill(nearest_oneal, nearest_wall) 
 
@@ -165,6 +166,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                                     
                                 else:
                                     if(nearest_wall != []):
+                                        nearest_enemy = entity_finder(player_pos, enemyPos)
                                         if near_wall(player_pos,nearest_wall):
                                             plant_bomb()
                                         else: go2wall(player_pos, nearest_wall,mapa)       
@@ -172,14 +174,15 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if(not actions_in_queue.empty()):
                     # print("aqui 1")
                     key = actions_in_queue.get()
-                    print("key:"+str(key))
                     
                 else:
                     key = ""
                 
-                if in_danger(player_pos,key) and key != 'A':
+                if in_danger(player_pos,key) and key != 'A' and bombs == []:
                     get_out()
                     key = actions_in_queue.get()
+                
+                print("key:"+str(key))
                 
                 await websocket.send(
                             json.dumps({"cmd": "key", "key": key})
@@ -216,7 +219,7 @@ def entity_finder(minha_pos,obj_pos): # funçao para encontrar o objeto mais pro
     next_wall = []
     for pos in obj_pos:
         distancia_tmp = distancia_calculation(minha_pos,pos)
-        if(distancia_tmp < distancia):
+        if(distancia_tmp < distancia) and can_side_step(pos):
             distancia = distancia_tmp
             next_wall = pos
     return next_wall
@@ -286,7 +289,7 @@ def mover(player_pos, dst_pos):
             # it will not contain the destination
             if wall_list != []:
                 return mover(player_pos,side_step(nearest_wall))
-            return side_step(player_pos)
+            return [player_pos, side_step(player_pos)]
         #print(current_node)
         current_index = 0
         for index, item in enumerate(open_list):
@@ -406,10 +409,9 @@ def dodge2(bomb_pos, bomb, mapa):
     check_dodge = True
     next_pos = queue.Queue(100)
     next_pos.put(bomb_pos)
-
+    i = 0
     #print(bomb_pos)
     while(1):
-        i = 0
         p1 = next_pos.get()
         lst = [(0,1),(0,-1),(1,0),(-1,0)]
         for pos in lst:
@@ -418,9 +420,9 @@ def dodge2(bomb_pos, bomb, mapa):
             if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or isObs(new_pos,get_enemyPos()) or isObs(new_pos, danger_zone) or new_pos == bomb_pos):
                 i+=1
                 #print(i)
-                if i == 24: #n tem hipoteses
+                if i == 32: #n tem hipoteses
                     check_dodge = False
-                    return new_pos
+                    return player_pos
                 continue# n faz nada / salta a frente     
             else:
                 if(not bomb.in_range(new_pos)):
@@ -439,6 +441,7 @@ def plant_bomb():
         actions_in_queue.put("B")
         safe = False
     else: wait(1)
+    
  
 def wait(wait_time): #fazer w8 para time out da bomba
     for x in range(wait_time): # w8
@@ -461,7 +464,7 @@ def side_step(pos):
 def can_side_step(pos):
     for x in [(0,1),(1,0),(0,-1),(-1,0)]:
         check_pos = (pos[0] + x[0], pos[1] + x[1])
-        if(mapa.is_blocked(check_pos) or isObs(check_pos, wall_list)):
+        if(mapa.is_blocked(check_pos) or isObs(check_pos, wall_list) or isObs(check_pos,get_enemyPos())):
                 continue
         else:
             return True
@@ -504,7 +507,7 @@ def kill(pos, w):
     nearest_wall = entity_finder(player_pos,wall_list)
     d = distancia_calculation(player_pos,w)
     if detonador:
-        alcance = 3
+        alcance = 4
     else: alcance = 1
     isNear = d == 1
     #print("range  "+ str(alcance))
@@ -626,7 +629,7 @@ def calc_danger(enemy_pos,list_diretions): # para balloom e Doll
             if not isOneal(enemy_pos[i]): # se n for oneal
                 #print("n é oneal")
                 danger_zone.append((danger_zone[i][0] - 2*dir[0], danger_zone[i][1] - 2*dir[1])) # 1 atras
-                danger_zone.append((danger_zone[i][0] + 2*dir[0], danger_zone[i][1] + 2*dir[1])) # 3 a frenteS
+                #danger_zone.append((danger_zone[i][0] + 2*dir[0], danger_zone[i][1] + 2*dir[1])) # 3 a frenteS
                 #danger_zone.append((danger_zone[i][0] + 3*list_diretions[i][0], danger_zone[i][1] + 3*list_diretions[i][1])) # 4 a frenteS
                 #danger_zone.append((danger_zone[i][0] + 4*dir[i][0], danger_zone[i][1] + 4*dir[i][1])) # 5 a frenteS
                 danger_zone.append((danger_zone[i][0] + dir[0], danger_zone[i][1] + dir[1])) # 2 a frente  
@@ -660,8 +663,12 @@ def in_danger(player_pos,key):
     
     next_pos = (player_pos[0] + movement[0], player_pos[1] + movement[1])
     next_pos1 = (player_pos[0] + 2 * movement[0], player_pos[1] + 2 * movement[1]) # danger_zone n funciona bem, soluçao
+    n_left = (player_pos[0] -2, player_pos[1])
+    n_right = (player_pos[0] + 2, player_pos[1])
+    n_up = (player_pos[0] , player_pos[1] - 2)
+    n_down = (player_pos[0] , player_pos[1] + 2)
     
-    if(isObs(next_pos,get_enemyPos()) or isObs(next_pos, danger_zone) or isObs(next_pos1,get_enemyPos())):
+    if(isObs(next_pos,get_enemyPos()) or isObs(next_pos1,get_enemyPos()) or isObs(n_left,get_enemyPos()) or isObs(n_right,get_enemyPos()) or isObs(n_up,get_enemyPos()) or isObs(n_down,get_enemyPos())):
         #print("aquis")
         danger_zone = prev_danger
         return True
@@ -673,10 +680,10 @@ def get_out():
     global plant_finished
     # if player_lives == lives: #se morrer, foi inevitável morrer
     #print("123")
+    
     actions_in_queue.queue.clear()
-    #print("1234")
     plant_bomb()
-  
+    
     # else: return
 
 def get_enemyName(name): #funçap que devolve posiçoes dos enimigos cm o nome passado como arg
@@ -701,22 +708,40 @@ def in_range(enemy, bomb):
     global check_dodge 
     check_dodge = True
     lst = []
+    flag = False
     next_pos = queue.Queue(100)
     next_pos.put(enemy)
+    oneal_list = get_enemyName("Oneal")
 
+    for oneal in oneal_list:
+        if oneal == enemy:
+            flag = True
+    if flag:
+        lst = [(0,1),(0,-1),(1,0),(-1,0)]
+    else: lst = [(0,2),(0,-2),(2,0),(-2,0)]
     #print(bomb_pos)
     while(1):
+        print("aqui")
         i = 0
         p1 = next_pos.get()
-        lst = [(0,1),(0,-1),(1,0),(-1,0)] # para variar
+       
         #random.shuffle(lst)
         for pos in lst:
+            i+=1
+            print
             new_pos = (p1[0] + pos[0], p1[1] + pos[1])
             if(mapa.is_blocked(new_pos) or isObs(new_pos,get_enemyPos())):
-                continue# n faz nada / salta a frente     
+                if i == 12 and not detonador:
+                    print("ciclo")
+                    return entity_finder(player_pos,wall_list) 
+                
+                elif i == 64: 
+                    return entity_finder(player_pos,wall_list)
+                continue# n faz nada / salta a frente
+                
             else:
                 if(not bomb.in_range(new_pos)):
-                    #print(new_pos)
+                    print(new_pos)
                     return new_pos
                 next_pos.put(new_pos)
 
