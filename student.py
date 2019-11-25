@@ -123,20 +123,25 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if(wall_list != []):
                     nearest_wall = entity_finder(player_pos,wall_list)
                 
+                print("bombs->"+str(bombs))
                 if bombs != [] and not safe: 
-                
+                    
                     safe = False
                     #actions_in_queue.queue.clear()
                     for x in bombs:
                         b = Bomb(x[0],mapa,x[2])
                         p = dodge2(x[0],b,mapa)
+                        print("dps do dodge")
                         m1 = mover(player_pos,p)
+                        print("dps da mover")
                         coord2dir(m1)
                         if not b.in_range(player_pos): 
                             actions_in_queue.queue.clear()
                             safe = True
                             if detonador:
                                 actions_in_queue.put("A") # detonar
+                
+                print("Depois da bomba")
                 
                 if bombs == [] and actions_in_queue.empty(): 
                     if droped_powerups != [] and lvl != 2 and lvl !=5: #powerup do 2 n interessa para ja
@@ -187,7 +192,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     get_out()
                     key = actions_in_queue.get()
                 
-                #print("key:"+str(key))
+                print("key:"+str(key))
                 
                 await websocket.send(
                             json.dumps({"cmd": "key", "key": key})
@@ -301,7 +306,7 @@ def mover(player_pos, dst_pos):
             # if we hit this point return the path such as it is
             # it will not contain the destination
             if wall_list != []:
-                print("return")
+                print("return"+ str(nearest_wall))
                 return mover(player_pos, side_step(nearest_wall))
             return [player_pos, side_step(player_pos)]
         #print(current_node)
@@ -422,9 +427,9 @@ def dodge2(bomb_pos, bomb, mapa):
         for pos in lst:
             new_pos = (p1[0] + pos[0], p1[1] + pos[1])
             #print(new_pos)
-            if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or isObs(new_pos,get_enemyPos()) or isObs(new_pos, danger_zone) or new_pos == bomb_pos):
+            if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or isObs(new_pos,get_enemyPos())  or new_pos == bomb_pos):
                 i+=1
-                #print(i)
+                print("new pos bloqueada: "+str(new_pos))
                 if i == 64: #n tem hipoteses
                     # check_dodge = False
                     return side_step(player_pos)
@@ -528,8 +533,9 @@ def kill(pos, w):
     b = Bomb(pos,mapa,alcance)
     kill_pos = in_range(pos,b)
     #print("kil_pos"+str(kill_pos))
+    print("nearest wall kill"+str(nearest_wall))
     p = mover(player_pos, kill_pos)
-    #print(p)
+    
     if p[len(p) - 1] == side_step(nearest_wall):
         print("Efeito")
         pass
@@ -677,15 +683,23 @@ def in_danger(player_pos,key):
     
     next_pos = (player_pos[0] + movement[0], player_pos[1] + movement[1])
     next_pos1 = (player_pos[0] + 2 * movement[0], player_pos[1] + 2 * movement[1]) # danger_zone n funciona bem, soluçao
+    next_pos2 = (player_pos[0] + 3 * movement[0], player_pos[1] + 3 * movement[1]) 
     n_left = (player_pos[0] -1, player_pos[1])
     n_right = (player_pos[0] + 1, player_pos[1])
     n_up = (player_pos[0] , player_pos[1] - 1)
     n_down = (player_pos[0] , player_pos[1] + 1)
+    dig1 = (player_pos[0] + 1, player_pos[1] + 1)
+    dig2 = (player_pos[0] -1 , player_pos[1] + 1)
+    dig3 = (player_pos[0] - 1 , player_pos[1] - 1)
+    dig4 = (player_pos[0] +1, player_pos[1] - 1)
     
     if(isObs(next_pos,get_enemyPos()) or isObs(next_pos1,get_enemyPos()) or isObs(n_left,get_enemyPos()) or isObs(n_right,get_enemyPos()) or isObs(n_up,get_enemyPos()) or isObs(n_down,get_enemyPos())):
         #print("aquis")
         danger_zone = prev_danger
         return True
+    if(isObs(dig1 ,get_enemyPos()) or isObs(dig2 ,get_enemyPos()) or isObs(dig3,get_enemyPos()) or isObs(dig4,get_enemyPos()) or isObs(next_pos2,get_enemyPos())):
+        return True
+
 
 def get_out():
     global lives
