@@ -137,7 +137,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                                 print("loco")
                                 actions_in_queue.put("A") # detonar
                 
-                if bombs == []: 
+                if bombs == [] and actions_in_queue.empty(): 
                     if droped_powerups != [] and lvl != 2 and lvl !=5: #powerup do 2 n interessa para ja
                         actions_in_queue.queue.clear()
                         get_power()
@@ -180,7 +180,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     key = actions_in_queue.get()
                     
                 else:
-                    key = ""
+                    key = "A"
                 
                 if in_danger(player_pos,key) and key != 'A' and bombs == []:
                     get_out()
@@ -300,7 +300,7 @@ def mover(player_pos, dst_pos):
             # if we hit this point return the path such as it is
             # it will not contain the destination
             if wall_list != []:
-                return mover(player_pos,side_step(nearest_wall))
+                return [player_pos, side_step(player_pos)]
             return [player_pos, side_step(player_pos)]
         #print(current_node)
         current_index = 0
@@ -403,12 +403,7 @@ def coord2dir(lista):
 def go2wall(player_pos, wall ,mapa): 
     step_pos = side_step(wall)
     p = mover(player_pos, step_pos)
-    
-   
     coord2dir(p)
-        
-
-
 def dodge2(bomb_pos, bomb, mapa):
     global danger_zone
     global wall_list
