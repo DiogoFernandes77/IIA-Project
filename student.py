@@ -447,7 +447,7 @@ def dodge3(bomb_pos,bomb):#amnh
         if (not bomb.in_range(node.position)):
             return get_path(node)
         lnewnodes = []
-        lst = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+        lst = [(0, -1), (0, 1), (-1, 0), (1, 0)]
         random.shuffle(lst)
         for new_position in lst: # Adjacent squares adsw
             # Get node positionnew_pos: tuple
@@ -465,7 +465,6 @@ def dodge3(bomb_pos,bomb):#amnh
             if mapa.is_blocked((node_position[0],node_position[1])) or isObs(node_position, get_enemyPos()) or isObs(node_position,wall_list) or node_position == bomb_pos:
                 continue
             
-        
             # Create new node
             
             # Append
@@ -765,8 +764,8 @@ def in_danger(player_pos,key):
     if(isObs(next_pos,get_enemyPos()) or isObs(next_pos1,get_enemyPos()) or isObs(n_left,get_enemyPos()) or isObs(n_right,get_enemyPos()) or isObs(n_up,get_enemyPos()) or isObs(n_down,get_enemyPos())):
         #print("aquis")
         return True
-    # if(isObs(dig1 ,get_enemyPos()) or isObs(dig2 ,get_enemyPos()) or isObs(dig3,get_enemyPos()) or isObs(dig4,get_enemyPos()) or isObs(next_pos2,get_enemyPos())):
-    #     return True
+    if(isObs(dig1 ,get_enemyPos()) or isObs(dig2 ,get_enemyPos()) or isObs(dig3,get_enemyPos()) or isObs(dig4,get_enemyPos()) or isObs(next_pos2,get_enemyPos())):
+        return True
 
 
 def get_out():
