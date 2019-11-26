@@ -124,17 +124,17 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     nearest_wall = entity_finder(player_pos,wall_list)
                 
                 print("bombs->"+str(bombs))
-                if bombs != [] and not safe: 
+                if bombs != []: 
                     
                     safe = False
-                    #actions_in_queue.queue.clear()
+                    actions_in_queue.queue.clear()
                     for x in bombs:
                         b = Bomb(x[0],mapa,x[2])
-                        p = dodge2(x[0],b,mapa)
+                        p = dodge3(x[0],b)
                         print("dps do dodge")
-                        m1 = mover(player_pos,p)
+                        #m1 = mover(player_pos,p)
                         print("dps da mover")
-                        coord2dir(m1)
+                        coord2dir(p)
                         if not b.in_range(player_pos): 
                             actions_in_queue.queue.clear()
                             safe = True
@@ -411,6 +411,75 @@ def go2wall(player_pos, wall ,mapa):
     step_pos = side_step(wall)
     p = mover(player_pos, step_pos)
     coord2dir(p)
+def get_path(node):
+    if node.parent is None:
+        return [node.position]
+    path = get_path(node.parent)
+    path += [node.position]
+    return(path)
+
+def dodge3(bomb_pos,bomb):#amnh
+    global mapa
+    global enemy_list
+    global danger_zone
+    global wall_list
+    global nearest_enemy
+    global bombs
+    maze = mapa.map
+    nearest_wall = entity_finder(player_pos,wall_list)
+    #print("n"+str(nearest_wall))
+    start_node = Node(None, player_pos)
+    if bombs == []:
+        bomb_pos = (bomb_pos[0],bomb_pos[1])
+    open_list = []
+    open_list.append(start_node)
+    limite = 16
+    i = 0
+
+    # Loop until you find the end
+    while len(open_list) > 0:
+        i+=1
+        if i == limite:
+            return [player_pos,side_step(player_pos)]
+        # if (not bomb.in_range(player_pos)):
+        #     return
+        node = open_list.pop(0)
+        if (not bomb.in_range(node.position)):
+            return get_path(node)
+        lnewnodes = []
+        lst = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+        random.shuffle(lst)
+        for new_position in lst: # Adjacent squares adsw
+            # Get node positionnew_pos: tuple
+            node_position = (node.position[0] + new_position[0], node.position[1] + new_position[1])
+            if node.position == player_pos:
+                pai = player_pos
+            else: pai = node.parent.position
+            if nearest_enemy != [] and distancia_calculation(player_pos, nearest_enemy) < 4 :
+                if distancia_calculation(node_position, nearest_enemy) < distancia_calculation(pai, nearest_enemy): #tem de se afastar
+                    continue
+            #Make sure within range
+            if node_position[0] > (len(maze) - 1) or node_position[0] < 0 or node_position[1] > (len(maze[len(maze)-1]) -1) or node_position[1] < 0:
+                continue
+            # Make sure walkable terrain
+            if mapa.is_blocked((node_position[0],node_position[1])) or isObs(node_position, get_enemyPos()) or isObs(node_position,wall_list) or node_position == bomb_pos:
+                continue
+            
+        
+            # Create new node
+            
+            # Append
+    
+            if node_position not in get_path(node): #posso ver por pos?
+                new_node = Node(node, node_position)
+                lnewnodes.append(new_node)
+
+            open_list.extend(lnewnodes)
+   
+    print("ultimo recurso")
+    return mover(player_pos,dodge2(bomb_pos,bomb,mapa)) # ultimo recurso, para garantir tds os caminhos possiveis
+       
+
 def dodge2(bomb_pos, bomb, mapa):
     global danger_zone
     global wall_list
@@ -695,10 +764,9 @@ def in_danger(player_pos,key):
     
     if(isObs(next_pos,get_enemyPos()) or isObs(next_pos1,get_enemyPos()) or isObs(n_left,get_enemyPos()) or isObs(n_right,get_enemyPos()) or isObs(n_up,get_enemyPos()) or isObs(n_down,get_enemyPos())):
         #print("aquis")
-        danger_zone = prev_danger
         return True
-    if(isObs(dig1 ,get_enemyPos()) or isObs(dig2 ,get_enemyPos()) or isObs(dig3,get_enemyPos()) or isObs(dig4,get_enemyPos()) or isObs(next_pos2,get_enemyPos())):
-        return True
+    # if(isObs(dig1 ,get_enemyPos()) or isObs(dig2 ,get_enemyPos()) or isObs(dig3,get_enemyPos()) or isObs(dig4,get_enemyPos()) or isObs(next_pos2,get_enemyPos())):
+    #     return True
 
 
 def get_out():
