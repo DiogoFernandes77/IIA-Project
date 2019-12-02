@@ -157,6 +157,8 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                         kill(nearest_enemy, nearest_wall)
                     elif lvl > 4 and enemy_list != []:
                         kill(nearest_enemy, nearest_wall)
+                    elif lvl <=2 and enemy_list != []: kill(nearest_enemy, nearest_wall) 
+
                     else: 
                         if get_enemyName("Oneal") != [] and not detonador: # a partir do nivel 3 vai buscar 1º o power up
                             nearest_oneal = entity_finder(player_pos, get_enemyName("Oneal"))
@@ -175,17 +177,16 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                                 
                                 enemyPos = get_enemyPos()
 
-                                if(wall_list == []):
+                                # if(wall_list == []):
                                     
-                                    m2 = mover(player_pos,(1,1))
-                                    coord2dir(m2)
+                                #     m2 = mover(player_pos,(1,1))
+                                #     coord2dir(m2)
                                     
-                                else:
-                                    if(nearest_wall != []):
-                                        print("destruir parede")
-                                        if near_wall(player_pos,nearest_wall):
-                                            plant_bomb()
-                                        else: go2wall(player_pos, nearest_wall,mapa)       
+                                if(nearest_wall != []):
+                                    print("destruir parede")
+                                    if near_wall(player_pos,nearest_wall):
+                                        plant_bomb()
+                                    else: go2wall(player_pos, nearest_wall,mapa)       
                     
                 if(not actions_in_queue.empty()):
                     # print("aqui 1")
@@ -527,6 +528,7 @@ def plant_bomb():
     # bomb = Bomb(player_pos, mapa, bomb_radius) #verifica primeiro
     # p1 = dodge2(player_pos, bomb, mapa)
     # if check_dodge:
+    actions_in_queue.queue.clear()
     actions_in_queue.put("B")
     safe = False
     # else: wait(1)
@@ -598,12 +600,13 @@ def kill(pos, w):
     global bombs
     global prev_kill
     
-    nearest_wall = entity_finder(player_pos,wall_list)
+    if wall_list !=[]:
+        nearest_wall = entity_finder(player_pos,wall_list)
 
-    if near_wall(player_pos,nearest_wall):
-        actions_in_queue.queue.clear()
-        plant_bomb()
-        return
+        if near_wall(player_pos,nearest_wall):
+            actions_in_queue.queue.clear()
+            plant_bomb()
+            return
 
     d = distancia_calculation(player_pos,w)
     if detonador:
