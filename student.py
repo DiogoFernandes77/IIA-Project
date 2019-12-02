@@ -40,6 +40,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         global detonador
         global speed
         global last_dir
+        global nearest_wall
         
         # Receive information about static game properties
         await websocket.send(json.dumps({"cmd": "join", "name": agent_name}))
@@ -153,6 +154,8 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                         kill(nearest_enemy, nearest_wall)
                     elif speed and enemy_list != []:
                         print("matar cm speed")
+                        kill(nearest_enemy, nearest_wall)
+                    elif lvl > 4 and enemy_list != []:
                         kill(nearest_enemy, nearest_wall)
                     else: 
                         if get_enemyName("Oneal") != [] and not detonador: # a partir do nivel 3 vai buscar 1º o power up
@@ -352,7 +355,7 @@ def mover(player_pos, dst_pos):
             if Node(current_node, node_position) in closed_list:
                 continue
             # Make sure walkable terrain
-            if mapa.is_blocked((node_position[0],node_position[1])) or isObs(node_position, get_enemyPos()):
+            if mapa.is_blocked((node_position[0],node_position[1])) or isObs(node_position, get_enemyPos()) :
                 continue
           
             # Create new node
@@ -385,7 +388,7 @@ def mover(player_pos, dst_pos):
             # Add the child to the open list
             #print(child)
             open_list.append(child) 
-    return []
+    return [player_pos, side_step(player_pos)]
 
 def coord2dir(lista):
     global wall_list
@@ -441,7 +444,7 @@ def dodge3(bomb_pos,bomb):#amnh
     open_list.append(start_node)
     limite = 1000 # ver dps valor
     i = 0
-    lst = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+    lst = [(0, -1), (0, 1), (-1, 0), (1, 0),(0,0)]
     # Loop until you find the end
     while len(open_list) > 0:
         i+=1
@@ -453,7 +456,7 @@ def dodge3(bomb_pos,bomb):#amnh
         # if (not bomb.in_range(player_pos)):
         #     return
         node = open_list.pop(0)
-        if (not bomb.in_range(node.position)):
+        if (not bomb.in_range(node.position) and not isObs(node.position,danger_zone)):
             return get_path(node)
         lnewnodes = []
         
@@ -471,7 +474,7 @@ def dodge3(bomb_pos,bomb):#amnh
             if node_position[0] > (len(maze) - 1) or node_position[0] < 0 or node_position[1] > (len(maze[len(maze)-1]) -1) or node_position[1] < 0:
                 continue
             # Make sure walkable terrain
-            if mapa.is_blocked((node_position[0],node_position[1])) or isObs(node_position, danger_zone) or isObs(node_position,wall_list) or (node_position[0] == bomb_pos[0] and node_position[1] == bomb_pos[1]) or isObs(player_pos, danger_zone):
+            if mapa.is_blocked((node_position[0],node_position[1])) or isObs(node_position, danger_zone) or isObs(node_position,wall_list) or (node_position[0] == bomb_pos[0] and node_position[1] == bomb_pos[1]):
                 continue
             
             # Create new node
@@ -507,9 +510,8 @@ def dodge2(bomb_pos, bomb, mapa):
             if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or isObs(new_pos, danger_zone) or new_pos == bomb_pos):
                 i+=1
                 print("new pos bloqueada: "+str(new_pos))
-                # if i == 64: #n tem hipoteses
-                #     # check_dodge = False
-                #     return side_step(player_pos)
+                if i == 4: #n tem hipoteses
+                    return side_step(player_pos)
                 continue# n faz nada / salta a frente     
             else:
                 if(not bomb.in_range(new_pos)):
@@ -577,6 +579,9 @@ def to_exit(player_pos, exit ,mapa): # ver dps
     # ss = side_step(player_pos)
     # p = mover(player_pos,ss)
     # coord2dir(p)
+    global nearest_wall
+    if near_wall(player_pos,nearest_wall):
+        plant_bomb()
     step_pos = side_step(exit)
     #print("Exit com step_pos"+str(step_pos))
     path = mover(player_pos, step_pos)
@@ -614,8 +619,8 @@ def kill(pos, w):
     p = mover(player_pos, kill_pos)
     print("caminho para matar")
     
-    if p[len(p) - 1] == side_step(nearest_wall):
-        actions_in_queue.queue.clear()
+    if wall_list != [] and p[len(p) - 1] == side_step(nearest_wall):
+        # actions_in_queue.queue.clear()
         print("Efeito")
         pass
     else: 
@@ -744,7 +749,6 @@ def in_danger(player_pos,key):
     
     next_pos = (player_pos[0] + movement[0], player_pos[1] + movement[1])
     next_pos1 = (player_pos[0] + 2 * movement[0], player_pos[1] + 2 * movement[1]) # danger_zone n funciona bem, soluçao
-    next_pos2 = (player_pos[0] + 3 * movement[0], player_pos[1] + 3 * movement[1]) 
     n_left = (player_pos[0] -1, player_pos[1])
     n_right = (player_pos[0] + 1, player_pos[1])
     n_up = (player_pos[0] , player_pos[1] - 1)
@@ -754,12 +758,11 @@ def in_danger(player_pos,key):
     dig3 = (player_pos[0] - 1 , player_pos[1] - 1)
     dig4 = (player_pos[0] +1, player_pos[1] - 1)
     
-    if(isObs(next_pos,danger_zone) or isObs(player_pos,danger_zone) or isObs(n_up,danger_zone) or isObs(n_down,danger_zone) or isObs(n_left,danger_zone) or isObs(n_right,danger_zone)):
+    if(isObs(next_pos,danger_zone) or isObs(next_pos1,danger_zone) or isObs(player_pos,danger_zone) or isObs(n_up,danger_zone) or isObs(n_down,danger_zone) or isObs(n_left,danger_zone) or isObs(n_right,danger_zone)):
         #print("aquis")
         return True
-    if(isObs(dig1 ,danger_zone) or isObs(dig2 ,danger_zone) or isObs(dig3,danger_zone) or isObs(dig4,danger_zone) or isObs(next_pos2,danger_zone)):
+    if(isObs(dig1 ,danger_zone) or isObs(dig2 ,danger_zone) or isObs(dig3,danger_zone) or isObs(dig4,danger_zone)):
        return True
-
 
 def get_out():
     global lives
