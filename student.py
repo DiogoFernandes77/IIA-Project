@@ -122,9 +122,9 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 dir = dir_ballon(enemy_pos)
                 calc_danger(enemy_pos,dir)
                 
-                #print(enemyPos)
+                
                 danger_zone.extend(enemyPos)
-                #print(danger_zone)
+                
 
                 if(wall_list != []):
                     nearest_wall = entity_finder(player_pos,wall_list)
@@ -213,7 +213,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     actions_in_queue.put("B")
                     actions_in_queue.put("A")
                 wrong_place += 1
-                print(trocavel)
+                print(wrong_place)
                 prev_player_pos = player_pos
                 print("key:"+str(key))
                 
