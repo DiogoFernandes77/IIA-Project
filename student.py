@@ -70,6 +70,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         check_stuck = 0
         prev_player_pos = (1,1)
         wrong_place = 0
+        suicidio = 0
         
         while True:
             try:
@@ -82,6 +83,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 
                 if(lvl != level_number or lives_count != lives): # caso mude de nivel ou morre, tudo resetado
                     print("mudou de nivel")
+                    suicidio = 0
                     k = 0
                     count = 0
                     prev = []
@@ -132,7 +134,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         
                 
                 print("bombs->"+str(bombs))
-                if bombs != []: 
+                if bombs != [] and suicidio == 0: 
                     
                     actions_in_queue.queue.clear()
                     for x in bombs:
@@ -209,7 +211,9 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     get_out()
                     key = actions_in_queue.get()
                 if check_stuck == 30:
-                    actions_in_queue.queue.clear()
+                    check_stuck = 0
+                    suicidio = 1
+                    actions_in_queue.put("A")
                     actions_in_queue.put("B")
                     actions_in_queue.put("A")
                 wrong_place += 1
