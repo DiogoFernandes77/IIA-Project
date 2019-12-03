@@ -492,33 +492,30 @@ def dodge3(bomb_pos,bomb):#amnh
     return mover(player_pos, dodge2(bomb_pos,bomb,mapa)) # ultimo recurso, para garantir tds os caminhos possiveis
        
 
-def dodge2(bomb_pos, bomb, mapa):
+def dodge2(bomb_pos, bomb):
     global danger_zone
     global wall_list
-    global check_dodge 
+    global check_dodge
+    global mapa 
     bomb_pos = (bomb_pos[0],bomb_pos[1])
     check_dodge = True
     next_pos = queue.Queue(100)
     next_pos.put(bomb_pos)
-    i = 0
     #print(bomb_pos)
-    while(1):
+    while not next_pos.empty():
         p1 = next_pos.get()
         lst = [(0,1),(0,-1),(1,0),(-1,0)]
         for pos in lst:
             new_pos = (p1[0] + pos[0], p1[1] + pos[1])
             #print(new_pos)
-            if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or isObs(new_pos, danger_zone) or new_pos == bomb_pos):
-                i+=1
-                print("new pos bloqueada: "+str(new_pos))
-                if i == 4: #n tem hipoteses
-                    return side_step(player_pos)
+            if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or isObs(new_pos, danger_zone) or new_pos == bomb_pos):                    
                 continue# n faz nada / salta a frente     
             else:
                 if(not bomb.in_range(new_pos)):
                     #print("dodge_pos "+str(new_pos))
                     return new_pos
                 next_pos.put(new_pos)
+    return [player_pos,side_step(player_pos)]
 
 def plant_bomb():
     global player_pos
