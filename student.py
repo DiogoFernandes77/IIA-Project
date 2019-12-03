@@ -489,7 +489,7 @@ def dodge3(bomb_pos,bomb):#amnh
             open_list.extend(lnewnodes)
    
     print("ultimo recurso")
-    return mover(player_pos, dodge2(bomb_pos,bomb,mapa)) # ultimo recurso, para garantir tds os caminhos possiveis
+    return mover(player_pos, dodge2(bomb_pos,bomb)) # ultimo recurso, para garantir tds os caminhos possiveis
        
 
 def dodge2(bomb_pos, bomb):
