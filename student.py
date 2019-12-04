@@ -145,7 +145,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                                 actions_in_queue.put("A") # detonar
                 
                 
-                if bombs == [] and actions_in_queue.empty(): 
+                if bombs == []: 
                     if droped_powerups != []: #powerup do 2 n interessa para ja
                         actions_in_queue.queue.clear()
                         get_power()
@@ -157,7 +157,6 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     elif lvl > 4 and enemy_list != []:
                         kill(nearest_enemy, nearest_wall)
                     elif (lvl >=2 and lvl < 4 and wall_list != [] and enemy_list != []): kill(nearest_enemy, nearest_wall)#vai atras dos inimigos ate deixar de ter paredes
-                    elif lvl == 1 and k < 700 and enemy_list != []: kill(nearest_enemy, nearest_wall)# primeiros 700 ciclos vai atras deles depois disso vai ficar a espera deles num ponto no caminho deles
                     
                     else: 
                         if get_enemyName("Oneal") != [] and not detonador: # a partir do nivel 3 vai buscar 1º o power up
@@ -616,7 +615,7 @@ def kill(pos, w):
     global prev_kill
     
     nearest_wall = entity_finder(player_pos,wall_list)
-
+    actions_in_queue.queue.clear()
     if near_wall(player_pos,nearest_wall):
         plant_bomb()
         return
