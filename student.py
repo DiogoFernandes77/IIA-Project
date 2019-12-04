@@ -115,11 +115,16 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if k == 0:
                     danger_zone = get_enemyPos()
                 k+=1
+                
+                print(player_pos)
+                print(prev_player_pos)
                 if prev_player_pos == player_pos:
-                    check_stuck+=1
+                    check_stuck +=1
+                else:
+                    check_stuck=0
 
                 prev_danger = danger_zone
-                
+                print(suicidio)
                 enemy_pos = get_enemyPos()
                 dir = dir_ballon(enemy_pos)
                 calc_danger(enemy_pos,dir)
@@ -134,7 +139,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         
                 
                 print("bombs->"+str(bombs))
-                if bombs != [] and suicidio == 0: 
+                if bombs != [] and suicidio != 1: 
                     
                     actions_in_queue.queue.clear()
                     for x in bombs:
@@ -210,14 +215,16 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if in_danger(player_pos,key) and bombs == []:
                     get_out()
                     key = actions_in_queue.get()
+                print(check_stuck)
                 if check_stuck == 30:
                     check_stuck = 0
                     suicidio = 1
-                    actions_in_queue.put("A")
+                    
                     actions_in_queue.put("B")
                     actions_in_queue.put("A")
                 wrong_place += 1
-                print(wrong_place)
+                #print(wrong_place)
+                
                 prev_player_pos = player_pos
                 print("key:"+str(key))
                 
@@ -415,7 +422,7 @@ def mover(player_pos, dst_pos):
 def coord2dir(lista):
     global wall_list
 
-    if(lista == []):
+    if(lista == [] or len(lista)== 1):
         return
     anterior = lista[0]
 
