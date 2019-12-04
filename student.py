@@ -216,7 +216,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     get_out()
                     key = actions_in_queue.get()
                 print(check_stuck)
-                if check_stuck == 30:
+                if check_stuck == 350:
                     check_stuck = 0
                     suicidio = 1
                     
@@ -565,8 +565,9 @@ def side_step(pos):
         if(mapa.is_blocked(new_pos) or isObs(new_pos, wall_list) or not can_side_step(new_pos) or isObs(new_pos,get_enemyPos())):
             continue
         lst.append(new_pos)
-    
-    return entity_finder(player_pos, lst) # para ir para o side_step mais perto
+    if lst != []:
+        return entity_finder(player_pos, lst) # para ir para o side_step mais perto
+    else: return player_pos
         
 def can_side_step(pos):
     for x in [(0,1),(1,0),(0,-1),(-1,0)]:
@@ -838,15 +839,7 @@ def in_range(enemy, bomb):
             i+=1
             new_pos = (p1[0] + pos[0], p1[1] + pos[1])
             if(mapa.is_blocked(new_pos) or isObs(new_pos,danger_zone)):
-                # if i == 8 and not detonador:
-                #     print("ciclo") 
-                #     return entity_finder(player_pos,wall_list) 
                 
-                # elif i == 12: 
-                #     print("ciclo1")
-                #     return entity_finder(player_pos,wall_list)
-
-                # else: continue# n faz nada / salta a frente
                 continue
                 
             else:
