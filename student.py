@@ -41,6 +41,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         global speed
         global last_dir
         global nearest_wall
+        global flames
         
         # Receive information about static game properties
         await websocket.send(json.dumps({"cmd": "join", "name": agent_name}))
@@ -71,6 +72,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
         prev_player_pos = (1,1)
         wrong_place = 0
         suicidio = 0
+        flames = False
         
         while True:
             try:
@@ -82,7 +84,6 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if lvl >= 4: detonador = True
                 
                 if(lvl != level_number or lives_count != lives): # caso mude de nivel ou morre, tudo resetado
-                    print("mudou de nivel")
                     suicidio = 0
                     k = 0
                     count = 0
@@ -94,6 +95,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     last_dir = []
                     ballom_test = -1
                     wrong_place = 0
+                    flames = False
                 player_pos = state["bomberman"]
                 player_pos = (player_pos[0],player_pos[1])
                 wall_list = state["walls"]
@@ -112,15 +114,12 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                     danger_zone = get_enemyPos()
                 k+=1
                 
-                print(player_pos)
-                print(prev_player_pos)
                 if prev_player_pos == player_pos:
                     check_stuck +=1
                 else:
                     check_stuck=0
 
-                prev_danger = danger_zone
-                print(suicidio)
+                prev_danger = danger_zone 
                 enemy_pos = get_enemyPos()
                 dir = dir_enemy(enemy_pos)
                 calc_danger(enemy_pos,dir)
@@ -130,7 +129,6 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if(wall_list != []):
                     nearest_wall = entity_finder(player_pos,wall_list)
 
-                print("bombs->"+str(bombs))
                 if bombs != [] and suicidio != 1: 
                     
                     actions_in_queue.queue.clear()
@@ -145,18 +143,18 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                                 actions_in_queue.put("A") # detonar
                 
                 
-                if bombs == []: 
+                if bombs == [] and actions_in_queue.empty(): 
                     if droped_powerups != []: #powerup do 2 n interessa para ja
                         actions_in_queue.queue.clear()
                         get_power()
                     elif detonador and enemy_list != [] and lvl == 3: #ja apanhou o detonador
                         kill(nearest_enemy, nearest_wall)
                     elif speed and enemy_list != []:
-                        print("matar cm speed")
                         kill(nearest_enemy, nearest_wall)
                     elif lvl > 4 and enemy_list != []:
                         kill(nearest_enemy, nearest_wall)
                     elif (lvl >=2 and lvl < 4 and wall_list != [] and enemy_list != []): kill(nearest_enemy, nearest_wall)#vai atras dos inimigos ate deixar de ter paredes
+                    elif lvl == 1 and k < 700 and enemy_list != []: kill(nearest_enemy, nearest_wall)# primeiros 700 ciclos vai atras deles depois disso vai ficar a espera deles num ponto no caminho deles
                     
                     else: 
                         if get_enemyName("Oneal") != [] and not detonador: # a partir do nivel 3 vai buscar 1º o power up
@@ -164,14 +162,32 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                             kill(nearest_oneal, nearest_wall) 
                         elif(actions_in_queue.empty()):
                             
-                            if saida != [] and len(enemy_list) == 0:# ir para a saida, se os monstros estiverem todos mortos
+                        
+                            if lvl == 1 and saida != [] and len(enemy_list) == 0:
+                                if flames:
+                                    actions_in_queue.queue.clear()
+                                    saida = (saida[0],saida[1])
+                                    to_exit(player_pos, saida ,mapa)
+                                else:
+                                    if near_wall(player_pos,nearest_wall):
+                                        plant_bomb()
+                                    else: go2wall(player_pos, nearest_wall,mapa)    
+                            elif lvl == 7 and saida != [] and len(enemy_list) == 0:
+                                if flames:
+                                    actions_in_queue.queue.clear()
+                                    saida = (saida[0],saida[1])
+                                    to_exit(player_pos, saida ,mapa)
+                                else:
+                                    if near_wall(player_pos,nearest_wall):
+                                        plant_bomb()
+                                    else: go2wall(player_pos, nearest_wall,mapa) 
+
+                            elif saida != [] and len(enemy_list) == 0:# ir para a saida, se os monstros estiverem todos mortos
                                 actions_in_queue.queue.clear()
-                                print("Saida")
                                 saida = (saida[0],saida[1])
                                 to_exit(player_pos, saida ,mapa)
                                 
                             else:
-                               
                                 if(wall_list == []):
                                     
                                     if(ballom_test ==  -1 or wrong_place >= 500):
@@ -180,15 +196,12 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                                         wrong_place = 0
                                         
                                     else:
-                                        print("posiçao a ir" + str(ballom_test))
                                         m2 = mover(player_pos,ballom_test)
                                         m2.append(tmp)
-                                        print("caminho da mover" + str(m2))
                                         coord2dir(m2)
 
                                 else:
                                     if(nearest_wall != []):
-                                        print("destruir parede")
                                         if near_wall(player_pos,nearest_wall):
                                             plant_bomb()
                                         else: go2wall(player_pos, nearest_wall,mapa)       
@@ -202,7 +215,6 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 if in_danger(player_pos,key) and bombs == []:
                     get_out()
                     key = actions_in_queue.get()
-                print(check_stuck)
                 if check_stuck == 200: #numero de ciclos em que fica parada ate se suicidar caso fique sem saida
                     check_stuck = 0
                     suicidio = 1
@@ -212,7 +224,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="89221"):
                 wrong_place += 1
             
                 prev_player_pos = player_pos
-                print("key:"+str(key))
+                #print("key:"+str(key))
                 
                 
                 await websocket.send(
@@ -228,18 +240,16 @@ def get_power():
     global player_pos
     global detonador
     global speed
-    global bomb_radius 
+    global flames 
     
     for pos,poder in droped_powerups:
         if(poder == "Flames"):
-            bomb_radius += 1
+            flames = True
             
         if(poder == "Detonator"):
-            print("tnttt")
             detonador = True
         
         if(poder == "Speed"):
-            print("speed")
             speed = True
         
         pos = (pos[0], pos[1]) # conversao [] -> ()
@@ -298,19 +308,14 @@ def mover(player_pos, dst_pos):
     global bombs
     maze = mapa.map
     nearest_wall = entity_finder(player_pos,wall_list)
-    print("n"+str(nearest_wall))
     start_node = Node(None, player_pos)
-    #print(start_node)
     start_node.g = start_node.h = start_node.f = 0
     end_node = Node(None, dst_pos)
-    #print(end_node)
     end_node.g = end_node.h = end_node.f = 0
 
     # Adding a stop condition
     outer_iterations = 0
-    if wall_list != []and dst_pos == side_step(nearest_wall):
-        max_iterations = len(maze) ** 2
-    else :max_iterations = (len(maze) // 4) ** 2
+    max_iterations = (len(maze) // 4) ** 2
 
 
     # Initialize both open and closed list
@@ -332,12 +337,10 @@ def mover(player_pos, dst_pos):
             # it will not contain the destination
             if wall_list != []:
                 
-                print("return"+ str(nearest_wall))
                 return mover(player_pos, side_step(nearest_wall))
             else: 
                 
                 return [player_pos, side_step(player_pos)]
-        #print(current_node)
         current_index = 0
         for index, item in enumerate(open_list):
             if item.f < current_node.f:
@@ -378,7 +381,6 @@ def mover(player_pos, dst_pos):
                 continue
           
             # Create new node
-            # print("node"+str(node_position))
             new_node = Node(current_node, node_position)
 
             # Append
@@ -405,9 +407,8 @@ def mover(player_pos, dst_pos):
                     break
 
             # Add the child to the open list
-            #print(child)
             open_list.append(child) 
-    return mover(player_pos,side_step(nearest_wall))
+    return mover(player_pos,side_step(player_pos))
 
 def coord2dir(lista):
     global wall_list
@@ -469,7 +470,6 @@ def dodge_ext(bomb_pos,bomb):#amnh
         if (not bomb.in_range(node.position) and not isObs(node.position,danger_zone)):
             return get_path(node)
         lnewnodes = []
-        
         random.shuffle(lst)
         for new_position in lst: # Adjacent squares adsw
             # Get node positionnew_pos: tuple
@@ -496,8 +496,7 @@ def dodge_ext(bomb_pos,bomb):#amnh
                 lnewnodes.append(new_node)
 
             open_list.extend(lnewnodes)
-   
-    print("ultimo recurso")
+
     return dodge_int(bomb_pos,bomb) # ultimo recurso, para garantir tds os caminhos possiveis
        
 
@@ -511,13 +510,12 @@ def dodge_int(bomb_pos, bomb):
 
     maze = mapa.map
     nearest_wall = entity_finder(player_pos,wall_list)
-    #print("n"+str(nearest_wall))
     start_node = Node(None, player_pos)
     if bombs == []:
         bomb_pos = (bomb_pos[0],bomb_pos[1])
     open_list = []
     open_list.append(start_node)
-    lst = [(0, -1), (0, 1), (-1, 0), (1, 0),(0,0)]
+    lst = [(0,1),(0,-1),(1,0),(-1,0)]
     # Loop until you find the end
     while len(open_list) > 0:
         node = open_list.pop(0)
@@ -525,7 +523,6 @@ def dodge_int(bomb_pos, bomb):
             return get_path(node)
         lnewnodes = []
         
-        random.shuffle(lst)
         for new_position in lst: # Adjacent squares adsw
             # Get node positionnew_pos: tuple
             node_position = (node.position[0] + new_position[0], node.position[1] + new_position[1])
@@ -587,11 +584,9 @@ def isObs(pos, list): # itera a lista e ve se algum objeto interfere com a posi�
 
 def get_enemyPos():
     global enemy_list
-    #print(enemy_list)
     pos = []
     for x in enemy_list:
         pos.append(x["pos"])
-    #print(pos)
     return pos
 
 def to_exit(player_pos, saida ,mapa): # ver dps
@@ -615,16 +610,14 @@ def kill(pos, w):
     global prev_kill
     
     nearest_wall = entity_finder(player_pos,wall_list)
-    actions_in_queue.queue.clear()
+
     if near_wall(player_pos,nearest_wall):
         plant_bomb()
         return
 
     kill_pos = in_range(pos)
     
-    print("nearest wall kill"+str(nearest_wall))
     p = mover(player_pos, kill_pos)
-    print("caminho para matar" + str(p))
      
     m1 = coord2dir(p)
 
@@ -642,17 +635,12 @@ def dir_enemy(enemy_pos):
     final_dir = []
     
     count +=1
-    
-    #print(" pos -> "+str(enemy_pos[0]))
+  
     
     if count == 1:
         prev = enemy_pos
-        
 
-   # print("prev ->"+ str(prev))
-    #print("enemy_pos->" + str(enemy_pos))
     for index in range(len(enemy_pos)):
-        #print(1)
         c1 = enemy_pos[index][0]-prev[index][0]
         c2 = enemy_pos[index][1]-prev[index][1]
 
@@ -696,19 +684,17 @@ def dir_enemy(enemy_pos):
 
     prev = enemy_pos
     prev_dir = final_dir
-    #print("dir"+str(final_dir))
+
     return final_dir
 
-def calc_danger(enemy_pos,list_diretions): # para balloom e Doll
+def calc_danger(enemy_pos,list_diretions): 
     global danger_zone
     global prev_danger
     size = len(enemy_pos) # so os ballooms tem danger_zone
     danger_zone = danger_zone[0:size]
-    #print("LISTA DOS INMIGOS" + str(list_diretions))
+    
     
     for cnt in range(size):
-        # dir = (danger_zone[cnt][0] - enemy_pos[cnt][0], danger_zone[cnt][1] - enemy_pos[cnt][1])
-        # print("dir"+str(dir))
         if list_diretions[cnt] == (0,0):
             danger_zone[cnt] = danger_zone[cnt][0]  , danger_zone[cnt][1] 
         else:
@@ -744,7 +730,6 @@ def in_danger(player_pos,key):
     dig4 = (player_pos[0] +1, player_pos[1] - 1)
     
     if(isObs(next_pos,danger_zone) or isObs(next_pos1,danger_zone) or isObs(player_pos,danger_zone) or isObs(n_up,danger_zone) or isObs(n_down,danger_zone) or isObs(n_left,danger_zone) or isObs(n_right,danger_zone)):
-        #print("aquis")
         return True
     if(isObs(dig1 ,danger_zone) or isObs(dig2 ,danger_zone) or isObs(dig3,danger_zone) or isObs(dig4,danger_zone)):
        return True
@@ -788,8 +773,6 @@ def in_range(enemy):
     lst = [(0,1),(0,-1),(1,0),(-1,0)]
 
     while not next_pos.empty():
-        print("calcular kill_ pos")
-        
         p1 = next_pos.get()
        
         for pos in lst:
